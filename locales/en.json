@@ -47,5 +47,13 @@
   "sticker_added": "Sticker added to the capsule.",
   "voice_added": "Voice message added to the capsule.",
   "recipients_list": "👥 Recipients of capsule {capsule_id}:\n{recipients}",
-  "no_recipients_for_capsule": "Capsule {capsule_id} has no recipients yet."
+  "no_recipients_for_capsule": "Capsule {capsule_id} has no recipients yet.",
+  "today": "today",
+  "tomorrow": "tomorrow",
+  "in_2_days": "in 2 days",
+  "in_3_days": "in 3 days",
+  "in_4_days": "in 4 days",
+  "in_5_days": "in 5 days",
+  "in_6_days": "in 6 days",
+  "in_7_days": "in 7 days"
 }
