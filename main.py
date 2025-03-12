@@ -74,18 +74,20 @@ def start_process(command, name):
         logger.info(f"{name} запущен с PID: {process.pid}")
         time.sleep(2)
         if process.poll() is None:
+            logger.info(f"{name} успешно запущен.")
             return True
         else:
             error = process.stderr.read().decode()
             logger.error(f"Ошибка запуска {name}: {error}")
-            logger.error(f"Убедитесь, что {name} установлен и доступен в PATH.")
+            logger.error(f"Убедитесь, что {name} установлен и переменные окружения (например, REDIS_URL) настроены правильно.")
             return False
     except Exception as e:
         logger.error(f"Не удалось запустить {name}: {e}")
         return False
 
 def start_services():
-    celery_command = "celery -A celery_config.app worker --loglevel=info"
+    # Исправляем команду запуска Celery
+    celery_command = "celery -A celery_config.app worker --loglevel=info --pool=solo"
     celery_success = start_process(celery_command, "Celery")
     if not celery_success:
         logger.error("Не удалось запустить Celery. Завершение работы.")
@@ -592,7 +594,7 @@ async def handle_voice(update: Update, context: CallbackContext):
     await update.message.reply_text(i18n.t('voice_added'))
 
 # Вспомогательные функции
-async def check_capsule_ownership(update: Update, capsule_id: int) -> bool:
+async def check_capsule_ownership(update: Update, context: CallbackContext) -> bool:
     user = fetch_data("users", {"telegram_id": update.message.from_user.id})
     if not user:
         await update.message.reply_text(i18n.t('not_registered'))
