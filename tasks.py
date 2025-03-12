@@ -1,4 +1,4 @@
-from celery_config import celery_app
+from celery_config import app as celery_app
 from telegram import Bot
 import json
 import logging
