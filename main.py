@@ -51,11 +51,11 @@ bot: Optional[Bot] = None
 CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS = range(7)
 
 # Инициализация i18n с проверкой
-i18n.load_path.append(os.path.join(os.path.dirname(__file__), 'locales'))
+locale_dir = os.path.join(os.path.dirname(__file__), 'locales')
+i18n.load_path.append(locale_dir)
 i18n.set('locale', 'ru')
 i18n.set('fallback', 'en')
 
-locale_dir = os.path.join(os.path.dirname(__file__), 'locales')
 if not os.path.exists(locale_dir):
     logger.error(f"Папка locales не найдена по пути: {locale_dir}")
     sys.exit(1)
@@ -63,6 +63,9 @@ if not os.path.exists(os.path.join(locale_dir, 'ru.json')):
     logger.error("Файл ru.json не найден в папке locales")
     sys.exit(1)
 
+# Дополнительная отладка для проверки загрузки локалей
+logger.info(f"Путь к локалям: {locale_dir}")
+logger.info(f"Список файлов в locales: {os.listdir(locale_dir)}")
 logger.info(f"Текущая локаль: {i18n.get('locale')}")
 logger.info(f"Тест перевода start_message: {i18n.t('start_message')}")
 logger.info(f"Тест перевода capsule_created: {i18n.t('capsule_created', capsule_id=1)}")
@@ -86,7 +89,6 @@ def start_process(command, name):
         return False
 
 def start_services():
-    # Исправляем команду запуска Celery
     celery_command = "celery -A celery_config.app worker --loglevel=info --pool=solo"
     celery_success = start_process(celery_command, "Celery")
     if not celery_success:
@@ -594,7 +596,7 @@ async def handle_voice(update: Update, context: CallbackContext):
     await update.message.reply_text(i18n.t('voice_added'))
 
 # Вспомогательные функции
-async def check_capsule_ownership(update: Update, context: CallbackContext) -> bool:
+async def check_capsule_ownership(update: Update, capsule_id: int) -> bool:
     user = fetch_data("users", {"telegram_id": update.message.from_user.id})
     if not user:
         await update.message.reply_text(i18n.t('not_registered'))
