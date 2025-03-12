@@ -53,10 +53,12 @@ bot: Optional[Bot] = None
 # Состояния беседы
 CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS = range(7)
 
-# Инициализация i18n
-i18n.load_path.append('locales')  # Папка с переводами
-i18n.set('locale', 'ru')  # Язык по умолчанию
-i18n.set('fallback', 'en')  # Резервный язык
+# Инициализация i18n с абсолютным путем
+i18n.load_path.append(os.path.join(os.path.dirname(__file__), 'locales'))
+i18n.set('locale', 'ru')
+i18n.set('fallback', 'en')
+logger.info(f"Текущая локаль: {i18n.get('locale')}")
+logger.info(f"Тест перевода: {i18n.t('start_message')}")
 
 # Шифрование AES-256
 def encrypt_data_aes(data: str, key: bytes) -> str:
@@ -102,7 +104,7 @@ def update_data(table: str, query: dict, data: dict):
     return response.data
 
 def delete_data(table: str, query: dict):
-    response = supabase.table(table).delete().eq(query).execute()
+    response = supabase.table(table).delete().eq(next(iter(query)), query[next(iter(query))]).execute()
     return response.data
 
 def get_chat_id(username: str):
@@ -250,7 +252,7 @@ async def handle_language_selection(update: Update, context: CallbackContext):
         ["🌍 Сменить язык"]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
-    await update.message.reply_text(i18n.t('start_message'), reply_markup=reply_markup)
+    await update.effective_message.reply_text(i18n.t('start_message'), reply_markup=reply_markup)
 
 async def create_capsule_command(update: Update, context: CallbackContext):
     try:
@@ -473,10 +475,20 @@ async def handle_delete(update: Update, context: CallbackContext):
         capsule_id = context.user_data.get('deleting_capsule_id')
         delete_capsule(capsule_id)
         await update.message.reply_text(i18n.t('capsule_deleted', capsule_id=capsule_id),
-                                        reply_markup=ReplyKeyboardRemove())
+                                        reply_markup=ReplyKeyboardMarkup([["📦 Создать капсулу", "📂 Просмотреть капсулы"],
+                                                                          ["👤 Добавить получателя", "📨 Отправить капсулу"],
+                                                                          ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
+                                                                          ["👥 Просмотреть получателей", "❓ Помощь"],
+                                                                          ["📅 Установить дату отправки", "💸 Поддержать автора"],
+                                                                          ["🌍 Сменить язык"]], resize_keyboard=True))
     elif update.message.text == "Нет":
         await update.message.reply_text(i18n.t('delete_canceled'),
-                                        reply_markup=ReplyKeyboardRemove())
+                                        reply_markup=ReplyKeyboardMarkup([["📦 Создать капсулу", "📂 Просмотреть капсулы"],
+                                                                          ["👤 Добавить получателя", "📨 Отправить капсулу"],
+                                                                          ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
+                                                                          ["👥 Просмотреть получателей", "❓ Помощь"],
+                                                                          ["📅 Установить дату отправки", "💸 Поддержать автора"],
+                                                                          ["🌍 Сменить язык"]], resize_keyboard=True))
 
 async def edit_capsule_command(update: Update, context: CallbackContext):
     context.user_data['state'] = "editing_capsule"
@@ -568,6 +580,7 @@ async def handle_view_recipients(update: Update, context: CallbackContext):
 
 async def handle_text(update: Update, context: CallbackContext):
     text = update.message.text.strip()
+    logger.info(f"Получен текст: {text}")
 
     if text in [
             "📦 Создать капсулу", "📂 Просмотреть капсулы",
@@ -880,6 +893,23 @@ async def handle_calendar_selection(update: Update, context: CallbackContext):
     await query.edit_message_text(i18n.t('date_selected', date=send_date))
     await save_send_date(update, context)
 
+async def handle_select_send_date(update: Update, context: CallbackContext):
+    try:
+        if context.user_data.get('state') == "selecting_send_date":
+            capsule_id = context.user_data.get('selected_capsule_id')
+            send_date_str = update.message.text.strip()
+            send_date = datetime.strptime(send_date_str, "%d.%m.%Y %H:%M")
+            send_date_utc = get_utc_time(send_date)
+            edit_capsule(capsule_id, scheduled_at=send_date_utc)
+            send_capsule_task.apply_async((capsule_id,), eta=send_date_utc)
+            await update.message.reply_text(i18n.t('date_set', date=send_date_utc))
+            context.user_data['state'] = "idle"
+    except ValueError:
+        await update.message.reply_text("Пожалуйста, введите дату в формате ДД.ММ.ГГГГ ЧЧ:ММ")
+    except Exception as e:
+        logger.error(f"Ошибка при установке даты: {e}")
+        await update.message.reply_text(i18n.t('error_general'))
+
 async def save_send_date(update: Update, context: CallbackContext):
     try:
         send_date = context.user_data.get('send_date')
@@ -952,10 +982,10 @@ async def post_init(application):
                     logger.info(
                         f"Добавление задачи для капсулы {capsule['id']}")
                     scheduler.add_job(
-                        send_capsule_job,
+                        send_capsule_task.delay,
                         'date',
                         run_date=scheduled_at,
-                        args=[application, capsule['id'], update],
+                        args=[capsule['id']],
                         id=f"capsule_{capsule['id']}",
                         timezone=pytz.utc)
         logger.info("Инициализация планировщика завершена")
