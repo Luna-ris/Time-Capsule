@@ -19,7 +19,7 @@ from typing import Optional, Dict
 from collections import deque
 from dotenv import load_dotenv
 from tasks import send_capsule_task  # Импортируйте задачу Celery
-from telegram_bot_calendar import DetailedTelegramCalendar  # Для календаря
+from python_telegram_bot_calendar import DetailedTelegramCalendar
 import i18n  # Для поддержки нескольких языков
 
 # Загрузка переменных окружения из файла .env
