@@ -49,5 +49,7 @@
   "sticker_added": "Sticker added to the capsule.",
   "voice_added": "Voice message added to the capsule.",
   "not_registered": "You are not registered with the bot.",
-  "not_your_capsule": "This capsule does not belong to you."
+  "not_your_capsule": "This capsule does not belong to you.",
+  "today": "Today",
+  "tomorrow": "Tomorrow"
 }
