@@ -55,6 +55,8 @@ CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DAT
 
 # Инициализация i18n
 i18n.load_path.append('locales')  # Папка с переводами
+i18n.set('locale', 'ru')  # Язык по умолчанию
+i18n.set('fallback', 'en')  # Резервный язык
 
 # Шифрование AES-256
 def encrypt_data_aes(data: str, key: bytes) -> str:
