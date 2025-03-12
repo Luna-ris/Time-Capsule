@@ -1,5 +1,8 @@
 import logging
 import asyncio
+import subprocess
+import time
+import os
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, CallbackContext, Application
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -13,7 +16,6 @@ from typing import Optional, Dict
 from dotenv import load_dotenv
 from tasks import send_capsule_task
 import i18n
-import os
 import sys
 import pytz
 import nest_asyncio
@@ -66,6 +68,46 @@ if not os.path.exists(os.path.join(locale_dir, 'ru.json')):
 logger.info(f"Текущая локаль: {i18n.get('locale')}")
 logger.info(f"Тест перевода start_message: {i18n.t('start_message')}")
 logger.info(f"Тест перевода capsule_created: {i18n.t('capsule_created', capsule_id=1)}")
+
+# Функция для запуска внешних процессов
+def start_process(command, name):
+    try:
+        # Проверяем, запущен ли процесс уже
+        if name == "redis" and os.system("redis-cli ping") == 0:
+            logger.info("Redis уже запущен.")
+            return True
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        logger.info(f"{name} запущен с PID: {process.pid}")
+        # Даем процессу время на запуск
+        time.sleep(2)
+        # Проверяем, работает ли процесс
+        if process.poll() is None:
+            return True
+        else:
+            error = process.stderr.read().decode()
+            logger.error(f"Ошибка запуска {name}: {error}")
+            return False
+    except Exception as e:
+        logger.error(f"Не удалось запустить {name}: {e}")
+        return False
+
+# Запуск Redis и Celery
+def start_services():
+    # Запуск Redis
+    redis_success = start_process("redis-server", "Redis")
+    if not redis_success:
+        logger.error("Не удалось запустить Redis. Завершение работы.")
+        sys.exit(1)
+
+    # Даем Redis время на инициализацию
+    time.sleep(2)
+
+    # Запуск Celery
+    celery_command = "celery -A celery_config.celery_app worker --loglevel=info"
+    celery_success = start_process(celery_command, "Celery")
+    if not celery_success:
+        logger.error("Не удалось запустить Celery. Завершение работы.")
+        sys.exit(1)
 
 # Шифрование AES-256
 def encrypt_data_aes(data: str, key: bytes) -> str:
@@ -615,6 +657,9 @@ async def check_bot_permissions(context: CallbackContext):
 
 # Главная функция
 async def main():
+    # Запускаем Redis и Celery перед стартом бота
+    start_services()
+
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     await check_bot_permissions(application)
 
