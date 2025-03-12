@@ -1,16 +1,9 @@
 from celery import Celery
+import os
 
-# Создаем экземпляр Celery
-celery_app = Celery(
-    'my_bot',
-    broker='redis://localhost:6379/0',  # Используем Redis в качестве брокера
-    backend=
-    'redis://localhost:6379/0'  # Используем Redis для хранения результатов
-)
-
-# Настройки Celery
-celery_app.conf.update(
-    result_expires=3600,
-    timezone='UTC',
-    enable_utc=True,
-)
+# Настройка Celery с использованием REDIS_URL от Railway
+app = Celery('tasks', broker=os.getenv('redis://default:${{REDIS_PASSWORD}}@${{RAILWAY_TCP_PROXY_DOMAIN}}:${{RAILWAY_TCP_PROXY_PORT}}', 'redis://localhost:6379/0'))
+app.conf.task_serializer = 'json'
+app.conf.result_serializer = 'json'
+app.conf.accept_content = ['json']
+app.conf.timezone = 'UTC'
