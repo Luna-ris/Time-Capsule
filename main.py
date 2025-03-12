@@ -85,7 +85,7 @@ def start_process(command, name):
         return False
 
 def start_services():
-    celery_command = "celery -A celery_config.celery_app worker --loglevel=info"
+    celery_command = "celery -A celery_config.app worker --loglevel=info"
     celery_success = start_process(celery_command, "Celery")
     if not celery_success:
         logger.error("Не удалось запустить Celery. Завершение работы.")
