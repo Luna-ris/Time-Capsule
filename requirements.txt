@@ -1,4 +1,5 @@
 python-telegram-bot
+python-telegram-bot-calendar
 python-dotenv
 supabase
 cryptography
