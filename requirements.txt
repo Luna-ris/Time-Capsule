@@ -2,9 +2,11 @@ python-telegram-bot
 python-dotenv
 supabase
 cryptography
+Flask
 apscheduler
 pytz
+aiohttp
 nest-asyncio
 redis
+telegram
 celery
-i18n
