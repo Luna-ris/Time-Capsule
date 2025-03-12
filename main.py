@@ -76,7 +76,8 @@ logger.info(f"Тест перевода capsule_created: {i18n.t('capsule_create
 # Функция для запуска внешних процессов
 def start_process(command, name):
     try:
-        if name == "redis" and os.system("redis-cli ping") == 0:
+        # Для Windows используем redis-cli.exe --version вместо ping
+        if name == "redis" and os.system("redis-cli.exe --version >nul 2>&1") == 0:
             logger.info("Redis уже запущен.")
             return True
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -91,12 +92,12 @@ def start_process(command, name):
             return False
     except Exception as e:
         logger.error(f"Не удалось запустить {name}: {e}")
-        logger.error(f"Проверьте установку {name} (например, 'nix-env -iA nixpkgs.redis' для Redis).")
+        logger.error(f"Проверьте установку {name} (например, скачайте с https://github.com/tporadowski/redis/releases для Windows).")
         return False
 
-# Запуск Redis и Celery
 def start_services():
-    redis_success = start_process("redis-server", "Redis")
+    # Для Windows используем redis-server.exe
+    redis_success = start_process("redis-server.exe", "Redis")
     if not redis_success:
         logger.error("Не удалось запустить Redis. Завершение работы.")
         sys.exit(1)
