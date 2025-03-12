@@ -14,6 +14,7 @@ from collections import deque
 from dotenv import load_dotenv
 from tasks import send_capsule_task  # Импортируйте задачу Celery
 import i18n  # Для поддержки нескольких языков
+import asyncio
 import os
 import sys
 import threading
