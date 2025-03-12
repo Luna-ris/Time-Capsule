@@ -10,6 +10,7 @@ from cryptography.hazmat.backends import default_backend
 from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
+import asyncio
 
 # Настройка логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -24,7 +25,6 @@ ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-bot = Bot(token=TELEGRAM_TOKEN)
 
 def fetch_data(table: str, query: dict = {}):
     response = supabase.table(table).select("*")
@@ -60,18 +60,27 @@ def send_capsule_task(capsule_id: int):
         if not recipients:
             logger.error(f"Нет получателей для капсулы {capsule_id}")
             return
-        for recipient in recipients:
-            chat_id = get_chat_id(recipient['recipient_username'])
-            if chat_id:
-                bot.send_message(chat_id=chat_id, text=f"🎁 Вам пришла капсула времени от @{recipient['recipient_username']}!")
-                for item in content.get('text', []): bot.send_message(chat_id, item)
-                for item in content.get('stickers', []): bot.send_sticker(chat_id, item)
-                for item in content.get('photos', []): bot.send_photo(chat_id, item)
-                for item in content.get('documents', []): bot.send_document(chat_id, item)
-                for item in content.get('voices', []): bot.send_voice(chat_id, item)
-                for item in content.get('videos', []): bot.send_video(chat_id, item)
-                for item in content.get('audios', []): bot.send_audio(chat_id, item)
-            else:
-                logger.error(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
+
+        # Создаем асинхронный бот для отправки сообщений
+        bot = Bot(token=TELEGRAM_TOKEN)
+        loop = asyncio.get_event_loop()
+
+        async def send_messages():
+            for recipient in recipients:
+                chat_id = get_chat_id(recipient['recipient_username'])
+                if chat_id:
+                    await bot.send_message(chat_id=chat_id, text=f"🎁 Вам пришла капсула времени от @{recipient['recipient_username']}!")
+                    for item in content.get('text', []): await bot.send_message(chat_id, item)
+                    for item in content.get('stickers', []): await bot.send_sticker(chat_id, item)
+                    for item in content.get('photos', []): await bot.send_photo(chat_id, item)
+                    for item in content.get('documents', []): await bot.send_document(chat_id, item)
+                    for item in content.get('voices', []): await bot.send_voice(chat_id, item)
+                    for item in content.get('videos', []): await bot.send_video(chat_id, item)
+                    for item in content.get('audios', []): await bot.send_audio(chat_id, item)
+                else:
+                    logger.error(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
+
+        # Запускаем асинхронную отправку
+        loop.run_until_complete(send_messages())
     except Exception as e:
         logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
