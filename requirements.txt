@@ -10,3 +10,4 @@ nest-asyncio
 redis
 telegram
 celery
+python-i18n
