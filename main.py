@@ -21,7 +21,7 @@ from dotenv import load_dotenv
 from tasks import send_capsule_task  # Импортируйте задачу Celery
 
 # Загрузка переменных окружения из файла .env
-load_dotenv()
+# load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(
