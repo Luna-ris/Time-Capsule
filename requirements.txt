@@ -11,3 +11,4 @@ nest-asyncio
 telegram
 celery
 python-i18n
+redis  # Добавлено
