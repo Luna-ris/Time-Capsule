@@ -42,9 +42,7 @@ if not all([SUPABASE_URL, SUPABASE_KEY, TELEGRAM_TOKEN, ENCRYPTION_KEY]):
     logger.error("Отсутствуют необходимые переменные окружения.")
     sys.exit(1)
 
-# Преобразование ключа шифрования
 ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
-
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 scheduler = AsyncIOScheduler(timezone=pytz.utc)
 bot: Optional[Bot] = None
@@ -57,7 +55,6 @@ i18n.load_path.append(os.path.join(os.path.dirname(__file__), 'locales'))
 i18n.set('locale', 'ru')
 i18n.set('fallback', 'en')
 
-# Проверка загрузки локализации
 locale_dir = os.path.join(os.path.dirname(__file__), 'locales')
 if not os.path.exists(locale_dir):
     logger.error(f"Папка locales не найдена по пути: {locale_dir}")
@@ -65,6 +62,13 @@ if not os.path.exists(locale_dir):
 if not os.path.exists(os.path.join(locale_dir, 'ru.json')):
     logger.error("Файл ru.json не найден в папке locales")
     sys.exit(1)
+
+try:
+    i18n.load_translations()
+    logger.info(f"Переводы успешно загружены для локали: {i18n.get('locale')}")
+except Exception as e:
+    logger.error(f"Ошибка загрузки переводов: {e}")
+
 logger.info(f"Текущая локаль: {i18n.get('locale')}")
 logger.info(f"Тест перевода start_message: {i18n.t('start_message')}")
 logger.info(f"Тест перевода capsule_created: {i18n.t('capsule_created', capsule_id=1)}")
@@ -72,37 +76,33 @@ logger.info(f"Тест перевода capsule_created: {i18n.t('capsule_create
 # Функция для запуска внешних процессов
 def start_process(command, name):
     try:
-        # Проверяем, запущен ли процесс уже
         if name == "redis" and os.system("redis-cli ping") == 0:
             logger.info("Redis уже запущен.")
             return True
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         logger.info(f"{name} запущен с PID: {process.pid}")
-        # Даем процессу время на запуск
         time.sleep(2)
-        # Проверяем, работает ли процесс
         if process.poll() is None:
             return True
         else:
             error = process.stderr.read().decode()
             logger.error(f"Ошибка запуска {name}: {error}")
+            logger.error(f"Убедитесь, что {name} установлен и доступен в PATH.")
             return False
     except Exception as e:
         logger.error(f"Не удалось запустить {name}: {e}")
+        logger.error(f"Проверьте установку {name} (например, 'nix-env -iA nixpkgs.redis' для Redis).")
         return False
 
 # Запуск Redis и Celery
 def start_services():
-    # Запуск Redis
     redis_success = start_process("redis-server", "Redis")
     if not redis_success:
         logger.error("Не удалось запустить Redis. Завершение работы.")
         sys.exit(1)
 
-    # Даем Redis время на инициализацию
     time.sleep(2)
 
-    # Запуск Celery
     celery_command = "celery -A celery_config.celery_app worker --loglevel=info"
     celery_success = start_process(celery_command, "Celery")
     if not celery_success:
@@ -657,13 +657,11 @@ async def check_bot_permissions(context: CallbackContext):
 
 # Главная функция
 async def main():
-    # Запускаем Redis и Celery перед стартом бота
     start_services()
 
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     await check_bot_permissions(application)
 
-    # Регистрация обработчиков команд
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("create_capsule", create_capsule_command))
@@ -677,12 +675,10 @@ async def main():
     application.add_handler(CommandHandler("select_send_date", select_send_date))
     application.add_handler(CommandHandler("change_language", change_language))
 
-    # Регистрация callback-запросов
     application.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r'^(ru|en)$'))
     application.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r'^(week|month|calendar)$'))
     application.add_handler(CallbackQueryHandler(handle_calendar_selection, pattern=r'^day_\d+$'))
 
-    # Регистрация обработчиков сообщений
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(MessageHandler(filters.VIDEO, handle_video))
