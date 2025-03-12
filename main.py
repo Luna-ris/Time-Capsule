@@ -5,7 +5,7 @@ import os
 import sys
 import threading
 import pytz
-from telegram import Update, Bot, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram import Update, Bot, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, CallbackContext, Application
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from cryptography.fernet import Fernet
@@ -19,6 +19,8 @@ from typing import Optional, Dict
 from collections import deque
 from dotenv import load_dotenv
 from tasks import send_capsule_task  # Импортируйте задачу Celery
+from telegram_bot_calendar import DetailedTelegramCalendar  # Для календаря
+import i18n  # Для поддержки нескольких языков
 
 # Загрузка переменных окружения из файла .env
 # load_dotenv()
@@ -50,9 +52,11 @@ scheduler = AsyncIOScheduler(timezone=pytz.utc)
 bot: Optional[Bot] = None
 
 # Состояния беседы
-CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS = range(
-    7)
+CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS = range(7)
 
+# Инициализация i18n
+i18n.load_path.append('locales')  # Папка с переводами
+i18n.set('locale', 'ru')  # Язык по умолчанию
 
 # Шифрование AES-256
 def encrypt_data_aes(data: str, key: bytes) -> str:
@@ -65,7 +69,6 @@ def encrypt_data_aes(data: str, key: bytes) -> str:
     encryptor = cipher.encryptor()
     encrypted = encryptor.update(padded_data) + encryptor.finalize()
     return (iv + encrypted).hex()
-
 
 def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     data = bytes.fromhex(encrypted_hex)
@@ -80,7 +83,6 @@ def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     unpadded = unpadder.update(decrypted) + unpadder.finalize()
     return unpadded.decode('utf-8')
 
-
 def fetch_data(table: str, query: dict = {}):
     response = supabase.table(table).select("*")
     for key, value in query.items():
@@ -88,11 +90,9 @@ def fetch_data(table: str, query: dict = {}):
     response = response.execute()
     return response.data
 
-
 def post_data(table: str, data: dict):
     response = supabase.table(table).insert(data).execute()
     return response.data
-
 
 def update_data(table: str, query: dict, data: dict):
     query_builder = supabase.table(table).update(data)
@@ -101,11 +101,9 @@ def update_data(table: str, query: dict, data: dict):
     response = query_builder.execute()
     return response.data
 
-
 def delete_data(table: str, query: dict):
     response = supabase.table(table).delete().eq(query).execute()
     return response.data
-
 
 def get_chat_id(username: str):
     response = fetch_data("users", {"username": username})
@@ -114,7 +112,6 @@ def get_chat_id(username: str):
     else:
         logger.error(f"Пользователь {username} не найден.")
         return None
-
 
 def add_user(username: str, telegram_id: int, chat_id: int):
     existing_user = fetch_data("users", {"telegram_id": telegram_id})
@@ -127,11 +124,9 @@ def add_user(username: str, telegram_id: int, chat_id: int):
     else:
         logger.info(f"Пользователь {username} уже существует в базе данных.")
 
-
 def generate_unique_capsule_number(creator_id: int) -> int:
     capsules = fetch_data("capsules", {"creator_id": creator_id})
     return len(capsules) + 1
-
 
 def create_capsule(creator_id: int,
                    title: str,
@@ -150,18 +145,15 @@ def create_capsule(creator_id: int,
     response = post_data("capsules", data)
     return response[0]['id']
 
-
 def add_recipient(capsule_id: int, recipient_username: str):
     post_data("recipients", {
         "capsule_id": capsule_id,
         "recipient_username": recipient_username
     })
 
-
 def delete_capsule(capsule_id: int):
     delete_data("recipients", {"capsule_id": capsule_id})
     delete_data("capsules", {"id": capsule_id})
-
 
 def edit_capsule(capsule_id: int,
                  title: Optional[str] = None,
@@ -178,25 +170,20 @@ def edit_capsule(capsule_id: int,
     if data:
         update_data("capsules", {"id": capsule_id}, data)
 
-
 def get_user_capsules(telegram_id: int):
     user = fetch_data("users", {"telegram_id": telegram_id})
     if not user:
         return []
     return fetch_data("capsules", {"creator_id": user[0]['id']})
 
-
 def get_capsule_recipients(capsule_id: int):
     return fetch_data("recipients", {"capsule_id": capsule_id})
-
 
 def add_notification(user_id: int, message: str):
     post_data("notifications", {"user_id": user_id, "message": message})
 
-
 def get_user_notifications(user_id: int):
     return fetch_data("notifications", {"user_id": user_id})
-
 
 async def start(update: Update, context: CallbackContext):
     user_id = update.message.from_user.id
@@ -205,16 +192,11 @@ async def start(update: Update, context: CallbackContext):
     if username:
         add_user(username, user_id, chat_id)
 
-    start_text = (
-        "👋 Привет! Я TimeCapsuleBot — твой помощник для создания капсул времени.\n\n"
-        "📦 Что я умею:\n"
-        "• Сохранять сообщения, фото или файлы в капсулу\n"
-        "• Отправлять их вам или другим людям в нужную дату\n"
-        "• Управлять капсулами: создавать, удалять, редактировать\n\n"
-        "Напишите /help, чтобы увидеть все команды и инструкции!\n\n"
-        "🕒 Как это работает?\n"
-        "1. Создаешь капсулу → 2. Добавляешь текст/фото → 3. Выбираешь дату и получателей → 4. Отправляешь!\n"
-        "Твое послание придет автоматически в указанный день ✨\n\n")
+    # Автоматическое определение языка
+    lang = update.message.from_user.language_code
+    i18n.set('locale', lang if lang in ['ru', 'en'] else 'en')
+
+    start_text = i18n.t('start_message')
 
     keyboard = [["📦 Создать капсулу", "📂 Просмотреть капсулы"],
                 ["👤 Добавить получателя", "📨 Отправить капсулу"],
@@ -225,20 +207,8 @@ async def start(update: Update, context: CallbackContext):
 
     await update.message.reply_text(start_text, reply_markup=reply_markup)
 
-
 async def help_command(update: Update, context: CallbackContext):
-    help_text = (
-        "🔍 **Инструкция по использованию:**\n"
-        "1. Начните с команды /start, чтобы зарегистрироваться.\n"
-        "2. Создайте новую капсулу с помощью команды /create_capsule.\n"
-        "3. Добавьте содержимое в капсулу (текст, фото, видео, аудио, документы, стикеры, голосовые сообщения).\n"
-        "4. Добавьте получателей с помощью команды /add_recipient.\n"
-        "5. Установите дату отправки с помощью команды /select_send_date.\n"
-        "6. Отправьте капсулу получателям с помощью команды /send_capsule.\n"
-        "7. Просмотрите свои капсулы с помощью команды /view_capsules.\n"
-        "8. Редактируйте или удалите капсулу с помощью команд /edit_capsule и /delete_capsule.\n"
-        "9. Просмотрите получателей капсулы с помощью команды /view_recipients.\n"
-        "10. Поддержите автора с помощью команды /support_author.")
+    help_text = i18n.t('help_message')
 
     keyboard = [["📦 Создать капсулу", "📂 Просмотреть капсулы"],
                 ["👤 Добавить получателя", "📨 Отправить капсулу"],
@@ -248,7 +218,6 @@ async def help_command(update: Update, context: CallbackContext):
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     await update.message.reply_text(help_text, reply_markup=reply_markup)
-
 
 async def create_capsule_command(update: Update, context: CallbackContext):
     try:
@@ -269,7 +238,7 @@ async def create_capsule_command(update: Update, context: CallbackContext):
             creator_id = existing_user[0]['id']
 
         if not creator_id:
-            await update.message.reply_text("❌ Ошибка создания пользователя")
+            await update.message.reply_text(i18n.t('error_user_creation'))
             return
 
         initial_content = {
@@ -298,7 +267,7 @@ async def create_capsule_command(update: Update, context: CallbackContext):
         capsule_id = response[0]['id'] if response else None
 
         if not capsule_id:
-            await update.message.reply_text("❌ Ошибка создания капсулы")
+            await update.message.reply_text(i18n.t('error_capsule_creation'))
             return
 
         context.user_data['current_capsule'] = capsule_id
@@ -308,21 +277,17 @@ async def create_capsule_command(update: Update, context: CallbackContext):
             f"Создана капсула {capsule_id} с содержимым: {initial_content}")
 
         await update.message.reply_text(
-            f"🎉 Капсула {capsule_id} создана!\n\n"
-            "Теперь добавь содержимое (текст, фото, видео, аудио, документы, стикеры, голосовые сообщения) и получателей с помощью команды /add_recipient."
+            i18n.t('capsule_created', capsule_id=capsule_id)
         )
     except Exception as e:
         logger.error(f"Ошибка при создании капсулы: {e}")
         await update.message.reply_text(
-            "❌ Произошла ошибка при создании капсулы. Пожалуйста, попробуйте снова."
+            i18n.t('error_general')
         )
-
 
 async def add_recipient_command(update: Update, context: CallbackContext):
     context.user_data['state'] = "selecting_capsule_for_recipients"
-    await update.message.reply_text(
-        "Введите ID капсулы, для которой хотите добавить получателей:")
-
+    await update.message.reply_text(i18n.t('enter_capsule_id_for_recipients'))
 
 async def handle_select_capsule_for_recipients(update: Update,
                                                context: CallbackContext):
@@ -334,18 +299,13 @@ async def handle_select_capsule_for_recipients(update: Update,
                 return
 
             context.user_data['selected_capsule_id'] = capsule_id
-            await update.message.reply_text(
-                "Введите имена пользователей получателей (например, @username1 @username2 @username3):"
-            )
+            await update.message.reply_text(i18n.t('enter_recipients'))
             context.user_data['state'] = "adding_recipient"
     except ValueError:
-        await update.message.reply_text(
-            "❌ Некорректный ID капсулы. Введите число.")
+        await update.message.reply_text(i18n.t('invalid_capsule_id'))
     except Exception as e:
         logger.error(f"Ошибка при выборе капсулы: {e}")
-        await update.message.reply_text(
-            "❌ Произошла ошибка при выборе капсулы.")
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_recipient(update: Update, context: CallbackContext):
     try:
@@ -358,14 +318,11 @@ async def handle_recipient(update: Update, context: CallbackContext):
                     username = username[1:]
                 add_recipient(capsule_id, username)
             await update.message.reply_text(
-                f"✅ Получатели добавлены в капсулу {capsule_id}.")
+                i18n.t('recipients_added', capsule_id=capsule_id))
             context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при добавлении получателя: {e}")
-        await update.message.reply_text(
-            "Произошла ошибка при добавлении получателя. Пожалуйста, попробуйте снова."
-        )
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def view_capsules_command(update: Update, context: CallbackContext):
     try:
@@ -377,29 +334,23 @@ async def view_capsules_command(update: Update, context: CallbackContext):
             for capsule in capsules:
                 created_at = datetime.fromisoformat(
                     capsule['created_at']).strftime("%d.%m.%Y %H:%M")
-                status = "✅ Запланирована" if capsule[
-                    'scheduled_at'] else "📝 Черновик"
+                status = i18n.t('scheduled') if capsule[
+                    'scheduled_at'] else i18n.t('draft')
                 response.append(f"📦 #{capsule['id']} {capsule['title']}\n"
-                                f"🕒 Создана: {created_at}\n"
-                                f"🔒 Статус: {status}\n")
+                                f"🕒 {i18n.t('created_at')}: {created_at}\n"
+                                f"🔒 {i18n.t('status')}: {status}\n")
 
-            await update.message.reply_text("📂 Ваши капсулы:\n\n" +
-                                            "\n".join(response),
+            await update.message.reply_text(i18n.t('your_capsules') + "\n".join(response),
                                             parse_mode="Markdown")
         else:
-            await update.message.reply_text("🗄 У вас пока нет капсул.")
+            await update.message.reply_text(i18n.t('no_capsules'))
     except Exception as e:
         logger.error(f"Ошибка при получении капсул: {e}")
-        await update.message.reply_text(
-            "❌ Произошла ошибка при получении капсул. Пожалуйста, попробуйте снова."
-        )
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def send_capsule_command(update: Update, context: CallbackContext):
     context.user_data['state'] = "sending_capsule"
-    await update.message.reply_text(
-        "📨 Введите ID капсулы, которую хотите отправить:")
-
+    await update.message.reply_text(i18n.t('enter_capsule_id_to_send'))
 
 async def handle_send_capsule(update: Update, context: CallbackContext):
     try:
@@ -411,9 +362,7 @@ async def handle_send_capsule(update: Update, context: CallbackContext):
             capsule = fetch_data("capsules", {"id": capsule_id})[0]
             recipients = get_capsule_recipients(capsule_id)
             if not recipients:
-                await update.message.reply_text(
-                    "В этой капсуле нет получателей.\n\n"
-                    "Добавьте получателей с помощью команды /add_recipient.")
+                await update.message.reply_text(i18n.t('no_recipients'))
                 return
 
             capsule_content = context.user_data.get('capsule_content', {})
@@ -425,8 +374,7 @@ async def handle_send_capsule(update: Update, context: CallbackContext):
                     try:
                         await context.bot.send_message(
                             chat_id=chat_id,
-                            text=
-                            f"🎁 Вам пришла капсула времени от @{update.message.from_user.username}!"
+                            text=i18n.t('capsule_received', sender=update.message.from_user.username)
                         )
                         for text in capsule_content.get('text', []):
                             await context.bot.send_message(chat_id=chat_id,
@@ -451,27 +399,25 @@ async def handle_send_capsule(update: Update, context: CallbackContext):
                                                          audio=audio)
 
                         await update.message.reply_text(
-                            f"✅ Капсула отправлена получателю @{recipient_username}."
+                            i18n.t('capsule_sent', recipient=recipient_username)
                         )
                     except Exception as e:
                         await update.message.reply_text(
-                            f"❌ Не удалось отправить капсулу получателю @{recipient_username}."
+                            i18n.t('error_sending_capsule', recipient=recipient_username)
                         )
                         logger.error(f"Ошибка при отправке капсулы: {e}")
                 else:
                     await update.message.reply_text(
-                        f"❌ Получатель @{recipient_username} не зарегистрирован в боте.\n\n"
-                        "Попросите его отправить команду /start.")
+                        i18n.t('recipient_not_registered', recipient=recipient_username)
+                    )
             context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при отправке капсулы: {e}")
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def delete_capsule_command(update: Update, context: CallbackContext):
     context.user_data['state'] = "deleting_capsule"
-    await update.message.reply_text(
-        "🗑 Введите ID капсулы, которую хотите удалить:")
-
+    await update.message.reply_text(i18n.t('enter_capsule_id_to_delete'))
 
 async def handle_delete_capsule(update: Update, context: CallbackContext):
     try:
@@ -480,36 +426,29 @@ async def handle_delete_capsule(update: Update, context: CallbackContext):
             if not await check_capsule_ownership(update, capsule_id):
                 return
 
+            context.user_data['deleting_capsule_id'] = capsule_id
             await update.message.reply_text(
-                "Вы уверены, что хотите удалить капсулу?",
+                i18n.t('confirm_delete'),
                 reply_markup=ReplyKeyboardMarkup([["Да"], ["Нет"]],
                                                  resize_keyboard=True))
     except Exception as e:
         logger.error(f"Ошибка при удалении капсулы: {e}")
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_delete(update: Update, context: CallbackContext):
     if update.message.text == "Да":
         capsule_id = context.user_data.get('deleting_capsule_id')
         delete_data("recipients", {"capsule_id": capsule_id})
         delete_capsule(capsule_id)
-        await update.message.reply_text(f"Капсула {capsule_id} удалена ✅",
+        await update.message.reply_text(i18n.t('capsule_deleted', capsule_id=capsule_id),
                                         reply_markup=ReplyKeyboardRemove())
     elif update.message.text == "Нет":
-        await update.message.reply_text("Удаление отменено ❌",
+        await update.message.reply_text(i18n.t('delete_canceled'),
                                         reply_markup=ReplyKeyboardRemove())
-
-
-async def handle_delete_cancel(update: Update, context: CallbackContext):
-    await update.message.reply_text("Удаление отменено ❌",
-                                    reply_markup=ReplyKeyboardRemove())
-
 
 async def edit_capsule_command(update: Update, context: CallbackContext):
     context.user_data['state'] = "editing_capsule"
-    await update.message.reply_text(
-        "📝 Введите ID капсулы, которую хотите отредактировать:")
-
+    await update.message.reply_text(i18n.t('enter_capsule_id_to_edit'))
 
 async def handle_edit_capsule(update: Update, context: CallbackContext):
     try:
@@ -519,13 +458,11 @@ async def handle_edit_capsule(update: Update, context: CallbackContext):
                 return
 
             context.user_data['editing_capsule_id'] = capsule_id
-            await update.message.reply_text(
-                "Введите новое название и содержимое капсулы (текст, фото, видео, аудио, документы, стикеры, голосовые сообщения)."
-            )
+            await update.message.reply_text(i18n.t('enter_new_content'))
             context.user_data['state'] = "editing_capsule_content"
     except Exception as e:
         logger.error(f"Ошибка при редактировании капсулы: {e}")
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_edit_capsule_content(update: Update,
                                       context: CallbackContext):
@@ -545,39 +482,34 @@ async def handle_edit_capsule_content(update: Update,
             capsule_content_str = json.dumps(capsule_content)
             title = "Без названия"
             edit_capsule(capsule_id, title, capsule_content_str)
-            await update.message.reply_text(
-                f"Капсула {capsule_id} отредактирована.")
+            await update.message.reply_text(i18n.t('capsule_edited', capsule_id=capsule_id))
             context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при редактировании капсулы: {e}")
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def view_recipients_command(update: Update, context: CallbackContext):
     context.user_data['state'] = "viewing_recipients"
-    await update.message.reply_text(
-        "Введите ID капсулы, чтобы просмотреть её получателей:")
-
+    await update.message.reply_text(i18n.t('enter_capsule_id_for_recipients'))
 
 async def check_capsule_ownership(update: Update, capsule_id: int) -> bool:
     user_id = update.message.from_user.id
     user = fetch_data("users", {"telegram_id": user_id})
     if not user:
-        await update.message.reply_text("❌ Вы не зарегистрированы в системе.")
+        await update.message.reply_text(i18n.t('not_registered'))
         return False
 
     capsule = fetch_data("capsules", {"id": capsule_id})
     if not capsule or capsule[0]['creator_id'] != user[0]['id']:
-        await update.message.reply_text("❌ Эта капсула вам не принадлежит.")
+        await update.message.reply_text(i18n.t('not_your_capsule'))
         return False
 
     return True
-
 
 def get_utc_time(local_time: datetime) -> datetime:
     local_tz = pytz.timezone("Europe/Moscow")
     utc_time = local_tz.localize(local_time).astimezone(pytz.utc)
     return utc_time
-
 
 async def handle_view_recipients(update: Update, context: CallbackContext):
     try:
@@ -592,21 +524,15 @@ async def handle_view_recipients(update: Update, context: CallbackContext):
                     f"@{recipient['recipient_username']}"
                     for recipient in recipients
                 ])
-                await update.message.reply_text(
-                    f"👥 Получатели капсулы {capsule_id}:\n{recipient_list}")
+                await update.message.reply_text(i18n.t('recipients_list', capsule_id=capsule_id, recipients=recipient_list))
             else:
-                await update.message.reply_text(
-                    f"У капсулы {capsule_id} пока нет получателей.\n\n"
-                    "Добавьте получателей с помощью команды /add_recipient.")
+                await update.message.reply_text(i18n.t('no_recipients_for_capsule', capsule_id=capsule_id))
             context.user_data['state'] = "idle"
     except ValueError:
-        await update.message.reply_text(
-            "❌ Некорректный ID капсулы. Введите число.")
+        await update.message.reply_text(i18n.t('invalid_capsule_id'))
     except Exception as e:
         logger.error(f"Ошибка при получении получателей: {e}")
-        await update.message.reply_text(
-            "❌ Произошла ошибка при получении получателей.")
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_text(update: Update, context: CallbackContext):
     text = update.message.text.strip()
@@ -631,9 +557,7 @@ async def handle_text(update: Update, context: CallbackContext):
         elif text == "✏️ Редактировать капсулу":
             await edit_capsule_command(update, context)
         elif text == "👥 Просмотреть получателей":
-            context.user_data['state'] = "viewing_recipients"
-            await update.message.reply_text(
-                "Введите ID капсулы, чтобы просмотреть её получателей:")
+            await view_recipients_command(update, context)
         elif text == "❓ Помощь":
             await help_command(update, context)
         elif text == "📅 Установить дату отправки":
@@ -661,7 +585,7 @@ async def handle_text(update: Update, context: CallbackContext):
     elif text:
         capsule_id = context.user_data.get('current_capsule')
         if not capsule_id:
-            await update.message.reply_text("❌ Сначала создайте капсулу!")
+            await update.message.reply_text(i18n.t('create_capsule_first'))
             return
 
         capsule_content = context.user_data.get(
@@ -679,14 +603,13 @@ async def handle_text(update: Update, context: CallbackContext):
 
         save_capsule_content(context, capsule_id)
 
-        await update.message.reply_text("Текст добавлен в капсулу.")
-
+        await update.message.reply_text(i18n.t('text_added'))
 
 async def handle_photo(update: Update, context: CallbackContext):
     try:
         capsule_id = context.user_data.get('current_capsule')
         if not capsule_id:
-            await update.message.reply_text("❌ Сначала создайте капсулу!")
+            await update.message.reply_text(i18n.t('create_capsule_first'))
             return
 
         capsule_content = context.user_data.get(
@@ -706,19 +629,16 @@ async def handle_photo(update: Update, context: CallbackContext):
 
         save_capsule_content(context, capsule_id)
 
-        await update.message.reply_text("Фото добавлено в капсулу.")
+        await update.message.reply_text(i18n.t('photo_added'))
     except Exception as e:
         logger.error(f"Ошибка при получении фото: {e}")
-        await update.message.reply_text(
-            "Произошла ошибка при добавлении фото. Пожалуйста, попробуйте снова."
-        )
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_video(update: Update, context: CallbackContext):
     try:
         capsule_id = context.user_data.get('current_capsule')
         if not capsule_id:
-            await update.message.reply_text("❌ Сначала создайте капсулу!")
+            await update.message.reply_text(i18n.t('create_capsule_first'))
             return
 
         capsule_content = context.user_data.get(
@@ -738,19 +658,16 @@ async def handle_video(update: Update, context: CallbackContext):
 
         save_capsule_content(context, capsule_id)
 
-        await update.message.reply_text("Видео добавлено в капсулу.")
+        await update.message.reply_text(i18n.t('video_added'))
     except Exception as e:
         logger.error(f"Ошибка при получении видео: {e}")
-        await update.message.reply_text(
-            "Произошла ошибка при добавлении видео. Пожалуйста, попробуйте снова."
-        )
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_audio(update: Update, context: CallbackContext):
     try:
         capsule_id = context.user_data.get('current_capsule')
         if not capsule_id:
-            await update.message.reply_text("❌ Сначала создайте капсулу!")
+            await update.message.reply_text(i18n.t('create_capsule_first'))
             return
 
         capsule_content = context.user_data.get(
@@ -770,19 +687,16 @@ async def handle_audio(update: Update, context: CallbackContext):
 
         save_capsule_content(context, capsule_id)
 
-        await update.message.reply_text("Аудио добавлено в капсулу.")
+        await update.message.reply_text(i18n.t('audio_added'))
     except Exception as e:
         logger.error(f"Ошибка при получении аудио: {e}")
-        await update.message.reply_text(
-            "Произошла ошибка при добавлении аудио. Пожалуйста, попробуйте снова."
-        )
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_document(update: Update, context: CallbackContext):
     try:
         capsule_id = context.user_data.get('current_capsule')
         if not capsule_id:
-            await update.message.reply_text("❌ Сначала создайте капсулу!")
+            await update.message.reply_text(i18n.t('create_capsule_first'))
             return
 
         capsule_content = context.user_data.get(
@@ -802,19 +716,16 @@ async def handle_document(update: Update, context: CallbackContext):
 
         save_capsule_content(context, capsule_id)
 
-        await update.message.reply_text("Документ добавлен в капсулу.")
+        await update.message.reply_text(i18n.t('document_added'))
     except Exception as e:
         logger.error(f"Ошибка при получении документа: {e}")
-        await update.message.reply_text(
-            "Произошла ошибка при добавлении документа. Пожалуйста, попробуйте снова."
-        )
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_sticker(update: Update, context: CallbackContext):
     try:
         capsule_id = context.user_data.get('current_capsule')
         if not capsule_id:
-            await update.message.reply_text("❌ Сначала создайте капсулу!")
+            await update.message.reply_text(i18n.t('create_capsule_first'))
             return
 
         capsule_content = context.user_data.get(
@@ -834,19 +745,16 @@ async def handle_sticker(update: Update, context: CallbackContext):
 
         save_capsule_content(context, capsule_id)
 
-        await update.message.reply_text("Стикер добавлен в капсулу.")
+        await update.message.reply_text(i18n.t('sticker_added'))
     except Exception as e:
         logger.error(f"Ошибка при получении стикера: {e}")
-        await update.message.reply_text(
-            "Произошла ошибка при добавлении стикера. Пожалуйста, попробуйте снова."
-        )
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_voice(update: Update, context: CallbackContext):
     try:
         capsule_id = context.user_data.get('current_capsule')
         if not capsule_id:
-            await update.message.reply_text("❌ Сначала создайте капсулу!")
+            await update.message.reply_text(i18n.t('create_capsule_first'))
             return
 
         capsule_content = context.user_data.get(
@@ -866,20 +774,14 @@ async def handle_voice(update: Update, context: CallbackContext):
 
         save_capsule_content(context, capsule_id)
 
-        await update.message.reply_text(
-            "Голосовое сообщение добавлено в капсулу.")
+        await update.message.reply_text(i18n.t('voice_added'))
     except Exception as e:
         logger.error(f"Ошибка при получении голосового сообщения: {e}")
-        await update.message.reply_text(
-            "Произошла ошибка при добавлении голосового сообщения. Пожалуйста, попробуйте снова."
-        )
-
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def select_send_date(update: Update, context: CallbackContext):
     context.user_data['state'] = "selecting_capsule"
-    await update.message.reply_text(
-        "Введите ID капсулы, для которой хотите установить дату отправки:")
-
+    await update.message.reply_text(i18n.t('enter_capsule_id_for_date'))
 
 async def handle_select_capsule(update: Update, context: CallbackContext):
     try:
@@ -889,132 +791,83 @@ async def handle_select_capsule(update: Update, context: CallbackContext):
                 return
 
             context.user_data['selected_capsule_id'] = capsule_id
-            await update.message.reply_text(
-                "Введите дату и время отправки в формате 'день.месяц.год час:минута:секунда':"
-            )
+            keyboard = [
+                [InlineKeyboardButton(i18n.t('through_week'), callback_data='week')],
+                [InlineKeyboardButton(i18n.t('through_month'), callback_data='month')],
+                [InlineKeyboardButton(i18n.t('select_date'), callback_data='calendar')]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(i18n.t('choose_send_date'), reply_markup=reply_markup)
             context.user_data['state'] = "selecting_send_date"
     except ValueError:
-        await update.message.reply_text(
-            "❌ Некорректный ID капсулы. Введите число.")
+        await update.message.reply_text(i18n.t('invalid_capsule_id'))
     except Exception as e:
         logger.error(f"Ошибка при выборе капсулы: {e}")
-        await update.message.reply_text(
-            "❌ Произошла ошибка при выборе капсулы.")
+        await update.message.reply_text(i18n.t('error_general'))
 
-        # Внутри функции handle_select_send_date
-        async def handle_select_send_date(update: Update,
-                                          context: CallbackContext):
-            try:
-                if context.user_data.get('state') == "selecting_send_date":
-                    send_date_str = update.message.text.strip()
-                    send_date_naive = datetime.strptime(
-                        send_date_str, "%d.%m.%Y %H:%M:%S")
-                    send_date = get_utc_time(send_date_naive)
-                    capsule_id = context.user_data.get('selected_capsule_id')
+async def handle_date_buttons(update: Update, context: CallbackContext):
+    query = update.callback_query
+    if query.data == 'week':
+        send_date = datetime.now() + timedelta(weeks=1)
+        context.user_data['send_date'] = send_date
+        await query.edit_message_text(i18n.t('date_selected', date=send_date))
+        await save_send_date(update, context)
+    elif query.data == 'month':
+        send_date = datetime.now() + timedelta(days=30)
+        context.user_data['send_date'] = send_date
+        await query.edit_message_text(i18n.t('date_selected', date=send_date))
+        await save_send_date(update, context)
+    elif query.data == 'calendar':
+        calendar, step = DetailedTelegramCalendar().build()
+        await query.edit_message_text(i18n.t('select_date'), reply_markup=calendar)
 
-                    job_id = f"capsule_{capsule_id}"
-                    if scheduler.get_job(job_id):
-                        scheduler.remove_job(job_id)
+async def handle_calendar(update: Update, context: CallbackContext):
+    query = update.callback_query
+    result, key, step = DetailedTelegramCalendar().process(query.data)
+    if not result and key:
+        await context.bot.edit_message_text(
+            i18n.t('select_date'),
+            chat_id=query.message.chat_id,
+            message_id=query.message.message_id,
+            reply_markup=key
+        )
+    elif result:
+        context.user_data['send_date'] = result
+        await context.bot.edit_message_text(
+            i18n.t('date_selected', date=result),
+            chat_id=query.message.chat_id,
+            message_id=query.message.message_id
+        )
+        await save_send_date(update, context)
 
-                    edit_capsule(capsule_id, scheduled_at=send_date)
-
-                    # Используем Celery для выполнения задачи
-                    send_capsule_task.apply_async((capsule_id, ),
-                                                  eta=send_date)
-
-                    logger.info(
-                        f"Задача на отправку капсулы {capsule_id} добавлена в Celery на {send_date}."
-                    )
-
-                    await update.message.reply_text(
-                        f"Дата отправки установлена на {send_date}.")
-                    context.user_data['state'] = "idle"
-            except ValueError:
-                await update.message.reply_text(
-                    "❌ Некорректный формат даты. Введите дату в формате 'день.месяц.год час:минута:секунда'."
-                )
-            except Exception as e:
-                logger.error(f"Ошибка при установке даты отправки: {e}")
-                await update.message.reply_text(
-                    "❌ Произошла ошибка при установке даты отправки.")
-
-
-async def send_capsule_job(application: Application, capsule_id: int,
-                           update: Update):
+async def save_send_date(update: Update, context: CallbackContext):
     try:
-        logger.info(f"Начало обработки капсулы {capsule_id}")
-
-        capsule = fetch_data("capsules", {"id": capsule_id})
-        if not capsule:
-            logger.error(f"Капсула {capsule_id} не найдена")
+        send_date = context.user_data.get('send_date')
+        capsule_id = context.user_data.get('selected_capsule_id')
+        if not send_date or not capsule_id:
+            await update.message.reply_text(i18n.t('error_general'))
             return
 
-        encrypted_content = capsule[0]['content']
-        decrypted = decrypt_data_aes(encrypted_content, ENCRYPTION_KEY_BYTES)
-        content = json.loads(decrypted)
+        job_id = f"capsule_{capsule_id}"
+        if scheduler.get_job(job_id):
+            scheduler.remove_job(job_id)
 
-        recipients = get_capsule_recipients(capsule_id)
-        if not recipients:
-            logger.error(f"Нет получателей для капсулы {capsule_id}")
-            return
+        edit_capsule(capsule_id, scheduled_at=send_date)
 
-        for recipient in recipients:
-            recipient_username = recipient['recipient_username']
-            chat_id = get_chat_id(recipient_username)
-            if chat_id:
-                try:
-                    await application.bot.send_message(
-                        chat_id=chat_id,
-                        text=
-                        f"🎁 Вам пришла капсула времени от @{update.message.from_user.username}!"
-                    )
-                    for text in content.get('text', []):
-                        await application.bot.send_message(chat_id=chat_id,
-                                                           text=text)
-                    for sticker in content.get('stickers', []):
-                        await application.bot.send_sticker(chat_id=chat_id,
-                                                           sticker=sticker)
-                    for photo in content.get('photos', []):
-                        await application.bot.send_photo(chat_id=chat_id,
-                                                         photo=photo)
-                    for document in content.get('documents', []):
-                        await application.bot.send_document(chat_id=chat_id,
-                                                            document=document)
-                    for voice in content.get('voices', []):
-                        await application.bot.send_voice(chat_id=chat_id,
-                                                         voice=voice)
-                    for video in content.get('videos', []):
-                        await application.bot.send_video(chat_id=chat_id,
-                                                         video=video)
-                    for audio in content.get('audios', []):
-                        await application.bot.send_audio(chat_id=chat_id,
-                                                         audio=audio)
+        # Используем Celery для выполнения задачи
+        send_capsule_task.apply_async((capsule_id, ), eta=send_date)
 
-                    await application.bot.send_message(
-                        chat_id=chat_id,
-                        text=
-                        f"🎁 Вам пришла капсула времени от @{update.message.from_user.username}!"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Не удалось отправить капсулу получателю @{recipient_username}: {str(e)}"
-                    )
-            else:
-                logger.error(
-                    f"Получатель @{recipient_username} не зарегистрирован в боте."
-                )
+        logger.info(f"Задача на отправку капсулы {capsule_id} добавлена в Celery на {send_date}.")
 
-        logger.info(f"Капсула {capsule_id} успешно обработана")
+        await update.message.reply_text(i18n.t('date_set', date=send_date))
+        context.user_data['state'] = "idle"
     except Exception as e:
-        logger.error(f"Задача не выполнена: {str(e)}")
-        raise
-
+        logger.error(f"Ошибка при установке даты отправки: {e}")
+        await update.message.reply_text(i18n.t('error_general'))
 
 async def support_author(update: Update, context: CallbackContext):
     DONATION_URL = "https://www.donationalerts.com/r/lunarisqqq"
-    await update.message.reply_text(
-        f"✅ Поддержите автора по ссылке:\n{DONATION_URL}")
-
+    await update.message.reply_text(i18n.t('support_author', url=DONATION_URL))
 
 def save_capsule_content(context: CallbackContext, capsule_id: int):
     try:
@@ -1037,7 +890,6 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     except Exception as e:
         logger.error(f"Ошибка сохранения содержимого: {str(e)}")
         raise
-
 
 async def post_init(application):
     logger.info("Начало инициализации планировщика")
@@ -1070,7 +922,6 @@ async def post_init(application):
     except Exception as e:
         logger.error(f"Не удалось инициализировать планировщик: {str(e)}")
 
-
 async def check_bot_permissions(context: CallbackContext):
     try:
         me = await context.bot.get_me()
@@ -1078,7 +929,6 @@ async def check_bot_permissions(context: CallbackContext):
     except Exception as e:
         logger.error(f"Ошибка аутентификации бота: {str(e)}")
         sys.exit(1)
-
 
 async def main():
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
@@ -1105,9 +955,9 @@ async def main():
         CommandHandler("select_send_date", select_send_date))
 
     application.add_handler(
-        CallbackQueryHandler(handle_delete, pattern="^delete_confirm_"))
+        CallbackQueryHandler(handle_date_buttons, pattern=r'^(week|month|calendar)$'))
     application.add_handler(
-        CallbackQueryHandler(handle_delete_cancel, pattern="^delete_cancel"))
+        CallbackQueryHandler(handle_calendar, pattern=r'^[0-9\-]+$'))
 
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
@@ -1127,7 +977,6 @@ async def main():
     await application.start()
     await application.updater.start_polling()
     await asyncio.Event().wait()
-
 
 if __name__ == "__main__":
     asyncio.run(main())
