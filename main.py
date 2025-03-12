@@ -63,12 +63,6 @@ if not os.path.exists(os.path.join(locale_dir, 'ru.json')):
     logger.error("Файл ru.json не найден в папке locales")
     sys.exit(1)
 
-try:
-    i18n.load_translations()
-    logger.info(f"Переводы успешно загружены для локали: {i18n.get('locale')}")
-except Exception as e:
-    logger.error(f"Ошибка загрузки переводов: {e}")
-
 logger.info(f"Текущая локаль: {i18n.get('locale')}")
 logger.info(f"Тест перевода start_message: {i18n.t('start_message')}")
 logger.info(f"Тест перевода capsule_created: {i18n.t('capsule_created', capsule_id=1)}")
@@ -76,10 +70,6 @@ logger.info(f"Тест перевода capsule_created: {i18n.t('capsule_create
 # Функция для запуска внешних процессов
 def start_process(command, name):
     try:
-        # Для Windows используем redis-cli.exe --version вместо ping
-        if name == "redis" and os.system("redis-cli.exe --version >nul 2>&1") == 0:
-            logger.info("Redis уже запущен.")
-            return True
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         logger.info(f"{name} запущен с PID: {process.pid}")
         time.sleep(2)
@@ -92,18 +82,9 @@ def start_process(command, name):
             return False
     except Exception as e:
         logger.error(f"Не удалось запустить {name}: {e}")
-        logger.error(f"Проверьте установку {name} (например, скачайте с https://github.com/tporadowski/redis/releases для Windows).")
         return False
 
 def start_services():
-    # Для Windows используем redis-server.exe
-    redis_success = start_process("redis-server.exe", "Redis")
-    if not redis_success:
-        logger.error("Не удалось запустить Redis. Завершение работы.")
-        sys.exit(1)
-
-    time.sleep(2)
-
     celery_command = "celery -A celery_config.celery_app worker --loglevel=info"
     celery_success = start_process(celery_command, "Celery")
     if not celery_success:
