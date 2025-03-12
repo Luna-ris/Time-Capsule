@@ -27,7 +27,6 @@ ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-
 def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     data = bytes.fromhex(encrypted_hex)
     iv = data[:16]
@@ -41,7 +40,6 @@ def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     unpadded = unpadder.update(decrypted) + unpadder.finalize()
     return unpadded.decode('utf-8')
 
-
 def fetch_data(table: str, query: dict = {}):
     response = supabase.table(table).select("*")
     for key, value in query.items():
@@ -49,10 +47,8 @@ def fetch_data(table: str, query: dict = {}):
     response = response.execute()
     return response.data
 
-
 def get_capsule_recipients(capsule_id: int):
     return fetch_data("recipients", {"capsule_id": capsule_id})
-
 
 async def send_capsule_job(capsule_id: int, update: Update,
                            context: CallbackContext):
