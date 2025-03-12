@@ -1,11 +1,5 @@
-import asyncio
 import logging
-import nest_asyncio
-import os
-import sys
-import threading
-import pytz
-from telegram import Update, Bot, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, CallbackContext, Application
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from cryptography.fernet import Fernet
@@ -20,6 +14,11 @@ from collections import deque
 from dotenv import load_dotenv
 from tasks import send_capsule_task  # Импортируйте задачу Celery
 import i18n  # Для поддержки нескольких языков
+import os
+import sys
+import threading
+import pytz
+import nest_asyncio
 
 # Загрузка переменных окружения из файла .env
 load_dotenv()
@@ -192,17 +191,16 @@ async def start(update: Update, context: CallbackContext):
     if username:
         add_user(username, user_id, chat_id)
 
-    # Автоматическое определение языка
-    lang = update.message.from_user.language_code
-    i18n.set('locale', lang if lang in ['ru', 'en'] else 'en')
-
     start_text = i18n.t('start_message')
 
-    keyboard = [["📦 Создать капсулу", "📂 Просмотреть капсулы"],
-                ["👤 Добавить получателя", "📨 Отправить капсулу"],
-                ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
-                ["👥 Просмотреть получателей", "❓ Помощь"],
-                ["📅 Установить дату отправки", "💸 Поддержать автора"]]
+    keyboard = [
+        ["📦 Создать капсулу", "📂 Просмотреть капсулы"],
+        ["👤 Добавить получателя", "📨 Отправить капсулу"],
+        ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
+        ["👥 Просмотреть получателей", "❓ Помощь"],
+        ["📅 Установить дату отправки", "💸 Поддержать автора"],
+        ["🌍 Сменить язык"]
+    ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     await update.message.reply_text(start_text, reply_markup=reply_markup)
@@ -210,14 +208,48 @@ async def start(update: Update, context: CallbackContext):
 async def help_command(update: Update, context: CallbackContext):
     help_text = i18n.t('help_message')
 
-    keyboard = [["📦 Создать капсулу", "📂 Просмотреть капсулы"],
-                ["👤 Добавить получателя", "📨 Отправить капсулу"],
-                ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
-                ["👥 Просмотреть получателей", "❓ Помощь"],
-                ["📅 Установить дату отправки", "💸 Поддержать автора"]]
+    keyboard = [
+        ["📦 Создать капсулу", "📂 Просмотреть капсулы"],
+        ["👤 Добавить получателя", "📨 Отправить капсулу"],
+        ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
+        ["👥 Просмотреть получателей", "❓ Помощь"],
+        ["📅 Установить дату отправки", "💸 Поддержать автора"],
+        ["🌍 Сменить язык"]
+    ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
     await update.message.reply_text(help_text, reply_markup=reply_markup)
+
+async def change_language(update: Update, context: CallbackContext):
+    keyboard = [
+        [InlineKeyboardButton("Русский", callback_data="ru")],
+        [InlineKeyboardButton("English", callback_data="en")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(i18n.t('select_language'), reply_markup=reply_markup)
+
+async def handle_language_selection(update: Update, context: CallbackContext):
+    query = update.callback_query
+    lang = query.data
+    if lang == 'ru':
+        i18n.set('locale', 'ru')
+        new_lang = 'Русский'
+    elif lang == 'en':
+        i18n.set('locale', 'en')
+        new_lang = 'English'
+    await query.edit_message_text(f"Язык изменен на {new_lang}.")
+
+    # Обновите клавиатуру
+    keyboard = [
+        ["📦 Создать капсулу", "📂 Просмотреть капсулы"],
+        ["👤 Добавить получателя", "📨 Отправить капсулу"],
+        ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
+        ["👥 Просмотреть получателей", "❓ Помощь"],
+        ["📅 Установить дату отправки", "💸 Поддержать автора"],
+        ["🌍 Сменить язык"]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text(i18n.t('start_message'), reply_markup=reply_markup)
 
 async def create_capsule_command(update: Update, context: CallbackContext):
     try:
@@ -438,7 +470,6 @@ async def handle_delete_capsule(update: Update, context: CallbackContext):
 async def handle_delete(update: Update, context: CallbackContext):
     if update.message.text == "Да":
         capsule_id = context.user_data.get('deleting_capsule_id')
-        delete_data("recipients", {"capsule_id": capsule_id})
         delete_capsule(capsule_id)
         await update.message.reply_text(i18n.t('capsule_deleted', capsule_id=capsule_id),
                                         reply_markup=ReplyKeyboardRemove())
@@ -542,7 +573,8 @@ async def handle_text(update: Update, context: CallbackContext):
             "👤 Добавить получателя", "📨 Отправить капсулу",
             "🗑 Удалить капсулу", "✏️ Редактировать капсулу",
             "👥 Просмотреть получателей", "❓ Помощь",
-            "📅 Установить дату отправки", "💸 Поддержать автора"
+            "📅 Установить дату отправки", "💸 Поддержать автора",
+            "🌍 Сменить язык"
     ]:
         if text == "📦 Создать капсулу":
             await create_capsule_command(update, context)
@@ -564,6 +596,8 @@ async def handle_text(update: Update, context: CallbackContext):
             await select_send_date(update, context)
         elif text == "💸 Поддержать автора":
             await support_author(update, context)
+        elif text == "🌍 Сменить язык":
+            await change_language(update, context)
     elif context.user_data.get('state') == "adding_recipient":
         await handle_recipient(update, context)
     elif context.user_data.get('state') == "sending_capsule":
@@ -824,8 +858,8 @@ async def handle_calendar(update: Update, context: CallbackContext):
     query = update.callback_query
     current_date = datetime.now()
     keyboard = [
-        [InlineKeyboardButton(f"{current_date.day} {i18n.t('today')}", callback_data=f"day_{current_date.day}"),
-         InlineKeyboardButton(f"{(current_date + timedelta(days=1)).day} {i18n.t('tomorrow')}", callback_data=f"day_{(current_date + timedelta(days=1)).day}")],
+        [InlineKeyboardButton(f"{current_date.day} {i18n.t('today')}", callback_data=f"day_{current_date.day}")],
+        [InlineKeyboardButton(f"{(current_date + timedelta(days=1)).day} {i18n.t('tomorrow')}", callback_data=f"day_{(current_date + timedelta(days=1)).day}")],
         [InlineKeyboardButton(f"{(current_date + timedelta(days=2)).day} {i18n.t('in_2_days')}", callback_data=f"day_{(current_date + timedelta(days=2)).day}")],
         [InlineKeyboardButton(f"{(current_date + timedelta(days=3)).day} {i18n.t('in_3_days')}", callback_data=f"day_{(current_date + timedelta(days=3)).day}")],
         [InlineKeyboardButton(f"{(current_date + timedelta(days=4)).day} {i18n.t('in_4_days')}", callback_data=f"day_{(current_date + timedelta(days=4)).day}")],
@@ -958,7 +992,11 @@ async def main():
     application.add_handler(CommandHandler("support_author", support_author))
     application.add_handler(
         CommandHandler("select_send_date", select_send_date))
+    application.add_handler(
+        CommandHandler("change_language", change_language))
 
+    application.add_handler(
+        CallbackQueryHandler(handle_language_selection, pattern=r'^(ru|en)$'))
     application.add_handler(
         CallbackQueryHandler(handle_date_buttons, pattern=r'^(week|month|calendar)$'))
     application.add_handler(
