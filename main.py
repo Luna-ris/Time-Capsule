@@ -600,7 +600,6 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext):
         await query.edit_message_text(t('delete_canceled'))
     context.user_data['state'] = "idle"
 
-# Обработчики текстовых сообщений и состояний
 async def handle_text(update: Update, context: CallbackContext):
     """
     Обработчик текстовых сообщений.
@@ -609,32 +608,32 @@ async def handle_text(update: Update, context: CallbackContext):
     text = update.message.text.strip()
     state = context.user_data.get('state', 'idle')
 
-    if state == CREATING_CAPSULE:
+    actions = {
+        "📦 Создать капсулу": create_capsule_command,
+        "📂 Просмотреть капсулы": view_capsules_command,
+        "👤 Добавить получателя": add_recipient_command,
+        "📨 Отправить капсулу": send_capsule_command,
+        "🗑 Удалить капсулу": delete_capsule_command,
+        "✏️ Редактировать капсулу": edit_capsule_command,
+        "👥 Просмотреть получателей": view_recipients_command,
+        "❓ Помощь": help_command,
+        "📅 Установить дату отправки": select_send_date,
+        "💸 Поддержать автора": support_author,
+        "🌍 Сменить язык": change_language
+    }
+
+    if text in actions:
+        await actions[text](update, context)
+    elif state == CREATING_CAPSULE:
         await handle_create_capsule_steps(update, context, text)
     elif state == "adding_recipient":
         await handle_recipient(update, context)
     elif state == "editing_capsule_content":
         await handle_edit_capsule_content(update, context)
-    elif state == SELECTING_CAPSULE_FOR_RECIPIENTS:
+    elif state in [SELECTING_CAPSULE_FOR_RECIPIENTS, "sending_capsule", "deleting_capsule", "editing_capsule", "viewing_recipients", SELECTING_CAPSULE]:
         await handle_capsule_selection(update, context)
     else:
-        actions = {
-            "📦 Создать капсулу": create_capsule_command,
-            "📂 Просмотреть капсулы": view_capsules_command,
-            "👤 Добавить получателя": add_recipient_command,
-            "📨 Отправить капсулу": send_capsule_command,
-            "🗑 Удалить капсулу": delete_capsule_command,
-            "✏️ Редактировать капсулу": edit_capsule_command,
-            "👥 Просмотреть получателей": view_recipients_command,
-            "❓ Помощь": help_command,
-            "📅 Установить дату отправки": select_send_date,
-            "💸 Поддержать автора": support_author,
-            "🌍 Сменить язык": change_language
-        }
-        if text in actions:
-            await actions[text](update, context)
-        else:
-            await update.message.reply_text(t('create_capsule_first'))
+        await update.message.reply_text(t('create_capsule_first'))
 
 async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
     capsule_content = context.user_data.get('capsule_content', {"text": []})
