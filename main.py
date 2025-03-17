@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 from supabase import create_client, Client
 from typing import Optional, List
 from dotenv import load_dotenv
-from tasks import send_capsule_task
 import sys
 import pytz
 import nest_asyncio
@@ -498,73 +497,13 @@ async def handle_date_buttons(update: Update, context: CallbackContext):
         )
         context.user_data['state'] = "entering_custom_date"
 
-async def handle_calendar(update: Update, context: CallbackContext):
-    """Обработчик выбора даты из календаря. Показывает кнопки с датами для выбора (устаревшая функция, теперь используется ввод текста)."""
-    query = update.callback_query
-    current_date = datetime.now(pytz.utc)
-    keyboard = [[InlineKeyboardButton(f"{(current_date + timedelta(days=i)).day} ({t('today') if i == 0 else t('tomorrow') if i == 1 else f'{i} days'})", callback_data=f"day_{(current_date + timedelta(days=i)).day}")] for i in range(8)]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(t('select_date'), reply_markup=reply_markup)
-
-async def handle_calendar_selection(update: Update, context: CallbackContext):
-    """Обработчик выбора даты из календаря. Устанавливает выбранную дату для отправки капсулы (устаревшая функция)."""
-    query = update.callback_query
-    selected_day = int(query.data.split('_')[1])
-    send_date = datetime.now(pytz.utc).replace(day=selected_day, hour=0, minute=0, second=0, microsecond=0)
-    context.user_data['send_date'] = send_date
-    await query.edit_message_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
-    await save_send_date(update, context)
-
-async def handle_delete_confirmation(update: Update, context: CallbackContext):
-    """Обработчик подтверждения удаления капсулы. Удаляет капсулу и отправляет подтверждение."""
-    query = update.callback_query
-    if query.data == "confirm_delete":
-        capsule_id = context.user_data.get('selected_capsule_id')
-        delete_capsule(capsule_id)
-        await query.edit_message_text(t('capsule_deleted', capsule_id=capsule_id))
-    else:
-        await query.edit_message_text(t('delete_canceled'))
-    context.user_data['state'] = "idle"
-
-async def handle_text(update: Update, context: CallbackContext):
-    """Обработчик текстовых сообщений. Выполняет действия в зависимости от текущего состояния."""
-    text = update.message.text.strip()
-    state = context.user_data.get('state', 'idle')
-    actions = {
-        "📦 Создать капсулу": create_capsule_command,
-        "📂 Просмотреть капсулы": view_capsules_command,
-        "👤 Добавить получателя": add_recipient_command,
-        "📨 Отправить капсулу": send_capsule_command,
-        "🗑 Удалить капсулу": delete_capsule_command,
-        "✏️ Редактировать капсулу": edit_capsule_command,
-        "👥 Просмотреть получателей": view_recipients_command,
-        "❓ Помощь": help_command,
-        "📅 Установить дату отправки": select_send_date,
-        "💸 Поддержать автора": support_author,
-        "🌍 Сменить язык": change_language
-    }
-    if text in actions:
-        await actions[text](update, context)
-    elif state == CREATING_CAPSULE:
-        await handle_create_capsule_steps(update, context, text)
-    elif state == "adding_recipient":
-        await handle_recipient(update, context)
-    elif state == "editing_capsule_content":
-        await handle_edit_capsule_content(update, context)
-    elif state == "entering_custom_date":
-        await handle_custom_date_input(update, context, text)
-    elif state in [SELECTING_CAPSULE_FOR_RECIPIENTS, "sending_capsule", "deleting_capsule", "editing_capsule", "viewing_recipients", SELECTING_CAPSULE]:
-        await handle_capsule_selection(update, context)
-    else:
-        await update.message.reply_text(t('create_capsule_first'))
-
 async def handle_custom_date_input(update: Update, context: CallbackContext, text: str):
     """Обработчик ввода пользовательской даты в формате ЧЧ:ММ ДД.ММ.ГГГГ."""
     try:
         # Парсим введённую дату
         send_date = datetime.strptime(text, '%H:%M %d.%m.%Y').replace(tzinfo=pytz.utc)
         now = datetime.now(pytz.utc)
-        
+
         # Проверяем, что дата в будущем
         if send_date <= now:
             await update.message.reply_text(
@@ -572,7 +511,7 @@ async def handle_custom_date_input(update: Update, context: CallbackContext, tex
                 "Пример: 21:12 17.03.2025"
             )
             return
-        
+
         # Сохраняем дату в context
         context.user_data['send_date'] = send_date
         await update.message.reply_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
@@ -743,15 +682,25 @@ async def save_send_date(update: Update, context: CallbackContext):
         if not send_date or not capsule_id:
             await update.callback_query.edit_message_text(t('error_general'))
             return
-        
-        # Сначала выполняем все операции
+
+        # Сохраняем дату в базе данных
         edit_capsule(capsule_id, scheduled_at=send_date)
-        send_capsule_task.apply_async((capsule_id,), eta=send_date)
-        
-        # Только после успешного выполнения отправляем сообщение
+
+        # Планируем задачу через APScheduler
+        scheduler.add_job(
+            send_capsule_task,
+            'date',
+            run_date=send_date,
+            args=[capsule_id],
+            id=f"capsule_{capsule_id}",
+            timezone=pytz.utc
+        )
+        logger.info(f"Задача для капсулы #{capsule_id} запланирована на {send_date}")
+
+        # Подтверждаем пользователю
         await update.callback_query.edit_message_text(t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M')))
         context.user_data['state'] = "idle"
-        
+
     except ConnectionError as e:
         logger.error(f"Ошибка подключения к базе данных: {e}")
         await update.callback_query.edit_message_text(t('service_unavailable'))
@@ -766,7 +715,14 @@ async def post_init(application):
         if capsule.get('scheduled_at'):
             scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
             if scheduled_at > now:
-                send_capsule_task.apply_async((capsule['id'],), eta=scheduled_at)
+                scheduler.add_job(
+                    send_capsule_task,
+                    'date',
+                    run_date=scheduled_at,
+                    args=[capsule['id']],
+                    id=f"capsule_{capsule['id']}",
+                    timezone=pytz.utc
+                )
                 logger.info(f"Запланирована отправка капсулы #{capsule['id']} на {scheduled_at}")
 
 async def check_bot_permissions(context: CallbackContext):
@@ -775,8 +731,10 @@ async def check_bot_permissions(context: CallbackContext):
 
 # Главная функция
 async def main():
+    global bot
     start_services()
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    bot = application.bot
     await check_bot_permissions(application)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
@@ -792,7 +750,6 @@ async def main():
     application.add_handler(CommandHandler("change_language", change_language))
     application.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r'^(ru|en)$'))
     application.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r'^(week|month|calendar)$'))
-    application.add_handler(CallbackQueryHandler(handle_calendar_selection, pattern=r'^day_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r'^(confirm_delete|cancel_delete)$'))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
@@ -807,6 +764,3 @@ async def main():
     await application.start()
     await application.updater.start_polling()
     await asyncio.Event().wait()
-
-if __name__ == "__main__":
-    asyncio.run(main())
