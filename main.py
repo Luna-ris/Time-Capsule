@@ -111,18 +111,18 @@ TRANSLATIONS = {
         "date_set": "✅ Дата отправки капсулы установлена на {date}. Ожидайте!",
         "support_author": "💖 Поддержите автора бота:\n{url}\nСпасибо за помощь в развитии проекта!",
         "create_capsule_first": "📦 Сначала создайте капсулу с помощью 'Создать капсулу', чтобы добавить в неё контент.",
-        "text_added": "✅ Текст добавлен в капсулу! Можете добавить ещё или перейти к получателям.",
-        "photo_added": "📷 Фото добавлено в капсулу! Можете загрузить ещё до {max_photos}.",
-        "video_added": "🎥 Видео добавлено в капсулу! Лимит: {max_videos}.",
-        "audio_added": "🎵 Аудио добавлено в капсулу! Лимит: {max_audios}.",
-        "document_added": "📄 Документ добавлен в капсулу! Лимит: {max_documents}.",
-        "sticker_added": "😊 Стикер добавлен в капсулу! Лимит: {max_stickers}.",
-        "voice_added": "🎙 Голосовое сообщение добавлено в капсулу! Лимит: {max_voices}.",
+        "text_added": "✅ Текстовое сообщение добавлено в капсулу!",
+        "photo_added": "✅ Фото добавлено в капсулу!",
+        "video_added": "✅ Видео добавлено в капсулу!",
+        "audio_added": "✅ Аудио добавлено в капсулу!",
+        "document_added": "✅ Документ добавлен в капсулу!",
+        "sticker_added": "✅ Стикер добавлен в капсулу!",
+        "voice_added": "✅ Голосовое сообщение добавлено в капсулу!",
         "not_registered": "⚠️ Вы не зарегистрированы в боте. Нажмите /start, чтобы начать.",
         "not_your_capsule": "❌ Эта капсула вам не принадлежит. Вы можете работать только со своими капсулами.",
         "today": "Сегодня",
         "tomorrow": "Завтра",
-        "create_step_1": "📝 *Шаг 1:* Добавьте текст, фото, видео или другой контент в кап- капсулу.\n*Пример:* Напишите сообщение или отправьте фото.",
+        "create_step_1": "📝 *Шаг 1:* Добавьте текст, фото, видео или другой контент в капсулу.\n*Пример:* Напишите сообщение или отправьте фото.",
         "create_step_2": "👥 *Шаг 2:* Укажите получателей капсулы.\n*Пример:* @Friend1 @Friend2",
         "create_step_3": "📅 *Шаг 3:* Установите дату отправки или завершите создание.\nНапишите 'завершить', чтобы сохранить как черновик, или выберите дату.",
         "content_limit_exceeded": "⚠️ Превышен лимит: максимум {max} {type} в одной капсуле.",
@@ -189,13 +189,13 @@ TRANSLATIONS = {
         "date_set": "✅ Capsule send date set to {date}. Stay tuned!",
         "support_author": "💖 Support the bot’s author:\n{url}\nThanks for helping the project grow!",
         "create_capsule_first": "📦 First, create a capsule with 'Create Capsule' to add content.",
-        "text_added": "✅ Text added to the capsule! Add more or proceed to recipients.",
-        "photo_added": "📷 Photo added to the capsule! You can upload up to {max_photos}.",
-        "video_added": "🎥 Video added to the capsule! Limit: {max_videos}.",
-        "audio_added": "🎵 Audio added to the capsule! Limit: {max_audios}.",
-        "document_added": "📄 Document added to the capsule! Limit: {max_documents}.",
-        "sticker_added": "😊 Sticker added to the capsule! Limit: {max_stickers}.",
-        "voice_added": "🎙 Voice message added to the capsule! Limit: {max_voices}.",
+        "text_added": "✅ Text message added to the capsule!",
+        "photo_added": "✅ Photo added to the capsule!",
+        "video_added": "✅ Video added to the capsule!",
+        "audio_added": "✅ Audio added to the capsule!",
+        "document_added": "✅ Document added to the capsule!",
+        "sticker_added": "✅ Sticker added to the capsule!",
+        "voice_added": "✅ Voice message added to the capsule!",
         "not_registered": "⚠️ You’re not registered with the bot. Press /start to begin.",
         "not_your_capsule": "❌ This capsule doesn’t belong to you. You can only manage your own capsules.",
         "today": "Today",
@@ -398,7 +398,6 @@ async def create_capsule_command(update: Update, context: CallbackContext):
         context.user_data['capsule_content'] = json.loads(initial_content)
         context.user_data['state'] = CREATING_CAPSULE
         await update.message.reply_text(t('capsule_created', capsule_id=capsule_id, max_texts=MAX_TEXTS, max_photos=MAX_PHOTOS, max_videos=MAX_VIDEOS))
-        await update.message.reply_text(t('create_step_1'))
     except Exception as e:
         logger.error(f"Ошибка при создании капсулы: {e}")
         await update.message.reply_text(t('error_general'))
@@ -687,7 +686,7 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
     capsule_content.setdefault(media_type, []).append(file_id)
     context.user_data['capsule_content'] = capsule_content
     save_capsule_content(context, context.user_data['current_capsule'])
-    await update.message.reply_text(t(f'{media_type[:-1]}_added', max_photos=max_limit))
+    await update.message.reply_text(t(f'{media_type[:-1]}_added'))
 
 async def handle_photo(update: Update, context: CallbackContext):
     await handle_media(update, context, "photos", "photo[-1]", MAX_PHOTOS)
