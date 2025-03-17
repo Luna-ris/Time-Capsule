@@ -10,5 +10,5 @@ asyncio
 nest-asyncio
 telegram
 celery
-python-i18n
-redis  # Добавлено
+python-i18n[yaml]
+redis
