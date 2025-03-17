@@ -5,7 +5,6 @@ import time
 import os
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, Bot
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, CallbackContext
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
@@ -14,7 +13,6 @@ from datetime import datetime, timedelta
 from supabase import create_client, Client
 from typing import Optional, List
 from dotenv import load_dotenv
-from tasks import send_capsule_task
 import sys
 import pytz
 import nest_asyncio
@@ -40,11 +38,10 @@ if len(ENCRYPTION_KEY_BYTES) != 32:
     logger.error("Длина ключа шифрования должна быть 32 байта для AES-256")
     sys.exit(1)
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-scheduler = AsyncIOScheduler(timezone=pytz.utc)
 bot: Optional[Bot] = None
 
 # Состояния беседы
-CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE, ENTERING_CUSTOM_DATE = range(9)
+CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, ADDING_RECIPIENT, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE, ENTERING_CUSTOM_DATE = range(9)
 
 # Локализация
 LOCALE = 'ru'
@@ -564,7 +561,7 @@ async def handle_custom_date_input(update: Update, context: CallbackContext, tex
         naive_date = datetime.strptime(text, '%H:%M %d.%m.%Y')
         local_date = local_tz.localize(naive_date)
         send_date = local_date.astimezone(pytz.utc)  # Преобразуем в UTC
-        
+
         now = datetime.now(pytz.utc)
         if send_date <= now:
             await update.message.reply_text(
@@ -572,7 +569,7 @@ async def handle_custom_date_input(update: Update, context: CallbackContext, tex
                 "Пример: 21:12 17.03.2025"
             )
             return
-        
+
         context.user_data['send_date'] = send_date
         await update.message.reply_text(t('date_selected', date=local_date.strftime('%d.%m.%Y %H:%M')))
         await save_send_date(update, context)
@@ -742,12 +739,12 @@ async def save_send_date(update: Update, context: CallbackContext):
         if not send_date or not capsule_id:
             await update.callback_query.edit_message_text(t('error_general'))
             return
-        
+
         edit_capsule(capsule_id, scheduled_at=send_date)
         logger.info(f"Планирую задачу для капсулы {capsule_id} на {send_date}")
         send_capsule_task.apply_async((capsule_id,), eta=send_date)
         logger.info(f"Задача для капсулы {capsule_id} успешно запланирована")
-        
+
         await update.callback_query.edit_message_text(t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M')))
         context.user_data['state'] = "idle"
     except Exception as e:
@@ -755,14 +752,26 @@ async def save_send_date(update: Update, context: CallbackContext):
         await update.callback_query.edit_message_text(t('error_general'))
 
 async def post_init(application):
-    capsules = fetch_data("capsules")
-    now = datetime.now(pytz.utc)
-    for capsule in capsules:
-        if capsule.get('scheduled_at'):
-            scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
-            if scheduled_at > now:
-                send_capsule_task.apply_async((capsule['id'],), eta=scheduled_at)
-                logger.info(f"Запланирована отправка капсулы #{capsule['id']} на {scheduled_at}")
+    logger.info("Начало инициализации задач")
+    try:
+        capsules = fetch_data("capsules")
+        logger.info(f"Найдено {len(capsules)} капсул в базе данных")
+
+        now = datetime.now(pytz.utc)
+        logger.info(f"Текущее время UTC: {now}")
+
+        for capsule in capsules:
+            if capsule.get('scheduled_at'):
+                scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
+                logger.info(f"Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
+
+                if scheduled_at > now:
+                    logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
+                    send_capsule_task.apply_async((capsule['id'],), eta=scheduled_at)
+                    logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
+        logger.info("Инициализация задач завершена")
+    except Exception as e:
+        logger.error(f"Не удалось инициализировать задачи: {e}")
 
 async def check_bot_permissions(context: CallbackContext):
     me = await context.bot.get_me()
@@ -773,6 +782,8 @@ async def main():
     start_services()
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     await check_bot_permissions(application)
+
+    # Регистрация обработчиков
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("create_capsule", create_capsule_command))
@@ -785,10 +796,12 @@ async def main():
     application.add_handler(CommandHandler("support_author", support_author))
     application.add_handler(CommandHandler("select_send_date", select_send_date))
     application.add_handler(CommandHandler("change_language", change_language))
+
     application.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r'^(ru|en)$'))
     application.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r'^(week|month|calendar)$'))
     application.add_handler(CallbackQueryHandler(handle_calendar_selection, pattern=r'^day_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r'^(confirm_delete|cancel_delete)$'))
+
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(MessageHandler(filters.VIDEO, handle_video))
@@ -796,9 +809,9 @@ async def main():
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
     application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+
     await application.initialize()
     await post_init(application)
-    scheduler.start()
     await application.start()
     await application.updater.start_polling()
     await asyncio.Event().wait()
