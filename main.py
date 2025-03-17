@@ -22,9 +22,9 @@ import nest_asyncio
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO)
+    level=logging.INFO
+)
 logger = logging.getLogger(__name__)
-
 nest_asyncio.apply()
 
 # Инициализация переменных окружения
@@ -32,16 +32,13 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
-
 if not all([SUPABASE_URL, SUPABASE_KEY, TELEGRAM_TOKEN, ENCRYPTION_KEY]):
     logger.error("Отсутствуют необходимые переменные окружения.")
     sys.exit(1)
-
 ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
 if len(ENCRYPTION_KEY_BYTES) != 32:
     logger.error("Длина ключа шифрования должна быть 32 байта для AES-256")
     sys.exit(1)
-
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 scheduler = AsyncIOScheduler(timezone=pytz.utc)
 bot: Optional[Bot] = None
@@ -62,138 +59,130 @@ MAX_VOICES = 5
 LOCALE = 'ru'
 TRANSLATIONS = {
     'ru': {
-        "start_message": "Добро пожаловать в TimeCapsuleBot! Используйте кнопки ниже для навигации.",
-        "help_message": (
-            "Вот доступные команды:\n"
-            "/start - Запустить бота\n"
-            "/create_capsule - Создать новую капсулу\n"
-            "/add_recipient - Добавить получателя в капсулу\n"
-            "/view_capsules - Просмотреть ваши капсулы\n"
-            "/send_capsule - Отправить капсулу\n"
-            "/delete_capsule - Удалить капсулу\n"
-            "/edit_capsule - Редактировать капсулу\n"
-            "/view_recipients - Просмотреть получателей капсулы\n"
-            "/support_author - Поддержать автора\n"
-            "/change_language - Сменить язык\n"
-            "/select_send_date - Установить дату отправки\n"
-        ),
-        "change_language": "Сменить язык",
+        "start_message": "Добро пожаловать в TimeCapsuleBot! 📬\nЯ помогу вам создавать капсулы времени с текстом, фото, видео и другим контентом, чтобы отправить их себе или друзьям в будущем.\nИспользуйте кнопки ниже, чтобы начать!",
+        "help_message": "📋 *Список команд TimeCapsuleBot*\n\n"
+                        "/start - Запустить бота и открыть главное меню.\n"
+                        "/create_capsule - Создать новую капсулу времени.\n*Пример:* Добавьте текст, фото или видео, укажите получателей и дату отправки.\n"
+                        "/add_recipient - Добавить получателей в существующую капсулу.\n*Пример:* @Friend1 @Friend2\n"
+                        "/view_capsules - Посмотреть список ваших капсул с их статусом.\n"
+                        "/send_capsule - Немедленно отправить капсулу получателям.\n"
+                        "/delete_capsule - Удалить капсулу, если она вам больше не нужна.\n"
+                        "/edit_capsule - Изменить содержимое капсулы (текст).\n"
+                        "/view_recipients - Показать, кто получит вашу капсулу.\n"
+                        "/select_send_date - Установить дату отправки капсулы.\n*Пример:* Через неделю или конкретный день.\n"
+                        "/support_author - Поддержать разработчика бота.\n"
+                        "/change_language - Сменить язык интерфейса.\n\n"
+                        "💡 Подсказка: Создайте капсулу и экспериментируйте с медиа!",
+        "change_language": "🌍 Сменить язык",
         "select_language": "Выберите ваш язык:",
-        "capsule_created": "Капсула #{capsule_id} создана успешно!",
-        "enter_recipients": "Введите получателей (через пробел):",
-        "select_capsule": "Введите номер капсулы для действия.",
-        "invalid_capsule_id": "Неверный ID капсулы. Пожалуйста, попробуйте снова.",
-        "recipients_added": "Получатели добавлены в капсулу #{capsule_id}.",
-        "error_general": "Произошла ошибка. Пожалуйста, попробуйте позже.",
-        "service_unavailable": "Сервис временно недоступен. Попробуйте позже.",
-        "your_capsules": "Ваши капсулы:",
-        "no_capsules": "У вас нет капсул.",
+        "capsule_created": "✅ Капсула #{capsule_id} создана!\nДобавьте в неё текст, фото или видео.",
+        "enter_recipients": "👥 Введите Telegram-имена получателей через пробел.\n*Пример:* @Friend1 @Friend2\nОни получат капсулу, когда вы её отправите или наступит заданная дата.",
+        "select_capsule": "📦 Введите номер капсулы для действия:",
+        "invalid_capsule_id": "❌ Неверный ID капсулы. Проверьте список ваших капсул с помощью 'Просмотреть капсулы'.",
+        "recipients_added": "✅ Получатели добавлены в капсулу #{capsule_id}!\nТеперь можно установить дату отправки или отправить её сразу.",
+        "error_general": "⚠️ Что-то пошло не так. Попробуйте снова или напишите в поддержку @SupportBot.",
+        "service_unavailable": "🛠 Сервис временно недоступен. Пожалуйста, подождите и попробуйте позже.",
+        "your_capsules": "📋 *Ваши капсулы времени:*\n",
+        "no_capsules": "📭 У вас пока нет капсул. Создайте первую с помощью 'Создать капсулу'!",
         "created_at": "Создано",
         "status": "Статус",
-        "scheduled": "Запланировано",
-        "draft": "Черновик",
-        "enter_capsule_id_to_send": "Введите ID капсулы для отправки:",
-        "no_recipients": "Получатели для этой капсулы не найдены.",
-        "capsule_received": "Вы получили капсулу от @{sender}!",
-        "capsule_sent": "Капсула отправлена @{recipient}.",
-        "recipient_not_registered": "Получатель @{recipient} не зарегистрирован в боте.",
-        "confirm_delete": "Вы уверены, что хотите удалить эту капсулу?",
-        "capsule_deleted": "Капсула #{capsule_id} удалена успешно.",
-        "delete_canceled": "Удаление отменено.",
-        "enter_new_content": "Введите новое содержимое для капсулы:",
-        "capsule_edited": "Капсула #{capsule_id} отредактирована успешно.",
-        "recipients_list": "Получатели для капсулы #{capsule_id}:\n{recipients}",
-        "no_recipients_for_capsule": "Получатели для капсулы #{capsule_id} не найдены.",
-        "choose_send_date": "Выберите дату отправки:",
+        "scheduled": "⏳ Запланировано",
+        "draft": "✏️ Черновик",
+        "enter_capsule_id_to_send": "📨 Введите ID капсулы для немедленной отправки (например, #5):",
+        "no_recipients": "❌ В этой капсуле нет получателей. Добавьте их с помощью 'Добавить получателя'.",
+        "capsule_received": "🎉 Вы получили капсулу времени от @{sender}!\nВот её содержимое:",
+        "capsule_sent": "📬 Капсула успешно отправлена @{recipient}!\nОни увидят её прямо сейчас.",
+        "recipient_not_registered": "⚠️ Получатель @{recipient} не зарегистрирован в боте и не получит капсулу.",
+        "confirm_delete": "🗑 Вы уверены, что хотите удалить капсулу? Это действие нельзя отменить.",
+        "capsule_deleted": "✅ Капсула #{capsule_id} удалена.",
+        "delete_canceled": "❌ Удаление отменено. Капсула осталась на месте.",
+        "enter_new_content": "✏️ Введите новый текст для капсулы (старый будет заменён):",
+        "capsule_edited": "✅ Капсула #{capsule_id} обновлена с новым содержимым!",
+        "recipients_list": "👥 Получатели капсулы #{capsule_id}:\n{recipients}",
+        "no_recipients_for_capsule": "📭 В капсуле #{capsule_id} пока нет получателей.",
+        "choose_send_date": "📅 Когда отправить капсулу?\nВыберите один из вариантов:",
         "through_week": "Через неделю",
         "through_month": "Через месяц",
         "select_date": "Выбрать дату",
-        "date_selected": "Дата выбрана: {date}",
-        "date_set": "Дата отправки установлена на {date}.",
-        "support_author": "Поддержать автора: {url}",
-        "create_capsule_first": "Пожалуйста, сначала создайте капсулу.",
-        "text_added": "Текст добавлен в капсулу.",
-        "photo_added": "Фото добавлено в капсулу.",
-        "video_added": "Видео добавлено в капсулу.",
-        "audio_added": "Аудио добавлено в капсулу.",
-        "document_added": "Документ добавлен в капсулу.",
-        "sticker_added": "Стикер добавлен в капсулу.",
-        "voice_added": "Голосовое сообщение добавлено в капсулу.",
-        "not_registered": "Вы не зарегистрированы в боте.",
-        "not_your_capsule": "Эта капсула вам не принадлежит.",
+        "date_selected": "📅 Вы выбрали дату: {date}\nКапсула будет отправлена в указанное время.",
+        "date_set": "✅ Дата отправки капсулы установлена на {date}. Ожидайте!",
+        "support_author": "💖 Поддержите автора бота:\n{url}\nСпасибо за помощь в развитии проекта!",
+        "create_capsule_first": "📦 Сначала создайте капсулу с помощью 'Создать капсулу', чтобы добавить в неё контент.",
+        "text_added": "✅ Текстовое сообщение добавлено в капсулу!",
+        "photo_added": "✅ Фото добавлено в капсулу!",
+        "video_added": "✅ Видео добавлено в капсулу!",
+        "audio_added": "✅ Аудио добавлено в капсулу!",
+        "document_added": "✅ Документ добавлен в капсулу!",
+        "sticker_added": "✅ Стикер добавлен в капсулу!",
+        "voice_added": "✅ Голосовое сообщение добавлено в капсулу!",
+        "not_registered": "⚠️ Вы не зарегистрированы в боте. Нажмите /start, чтобы начать.",
+        "not_your_capsule": "❌ Эта капсула вам не принадлежит. Вы можете работать только со своими капсулами.",
         "today": "Сегодня",
         "tomorrow": "Завтра",
-        "create_step_1": "",
-        "create_step_2": "",
-        "create_step_3": "",
-        "content_limit_exceeded": "Превышен лимит контента: макс. {max} элементов типа {type}."
+        "content_limit_exceeded": "⚠️ Превышен лимит: вы добавили слишком много {type}.",
     },
     'en': {
-        "start_message": "Welcome to TimeCapsuleBot! Use the buttons below to navigate.",
-        "help_message": (
-            "Here are the available commands:\n"
-            "/start - Start the bot\n"
-            "/create_capsule - Create a new capsule\n"
-            "/add_recipient - Add a recipient to the capsule\n"
-            "/view_capsules - View your capsules\n"
-            "/send_capsule - Send the capsule\n"
-            "/delete_capsule - Delete the capsule\n"
-            "/edit_capsule - Edit the capsule\n"
-            "/view_recipients - View capsule recipients\n"
-            "/support_author - Support the author\n"
-            "/change_language - Change language\n"
-            "/select_send_date - Set send date\n"
-        ),
-        "change_language": "Change language",
+        "start_message": "Welcome to TimeCapsuleBot! 📬\nI’ll help you create time capsules with text, photos, videos, and more to send to yourself or friends in the future.\nUse the buttons below to get started!",
+        "help_message": "📋 *TimeCapsuleBot Command List*\n\n"
+                        "/start - Launch the bot and open the main menu.\n"
+                        "/create_capsule - Create a new time capsule.\n*Example:* Add text, photos, or videos, set recipients and a send date.\n"
+                        "/add_recipient - Add recipients to an existing capsule.\n*Example:* @Friend1 @Friend2\n"
+                        "/view_capsules - View a list of your capsules with their status.\n"
+                        "/send_capsule - Send a capsule to recipients immediately.\n"
+                        "/delete_capsule - Delete a capsule if you no longer need it.\n"
+                        "/edit_capsule - Edit the capsule’s content (text).\n"
+                        "/view_recipients - See who will receive your capsule.\n"
+                        "/select_send_date - Set a send date for the capsule.\n*Example:* In a week or a specific day.\n"
+                        "/support_author - Support the bot’s developer.\n"
+                        "/change_language - Change the interface language.\n\n"
+                        "💡 Tip: Create a capsule and experiment with media!",
+        "change_language": "🌍 Change Language",
         "select_language": "Select your language:",
-        "capsule_created": "Capsule #{capsule_id} created successfully!",
-        "enter_recipients": "Enter recipients (separated by spaces):",
-        "select_capsule": "Enter the capsule number for the action.",
-        "invalid_capsule_id": "Invalid capsule ID. Please try again.",
-        "recipients_added": "Recipients added to capsule #{capsule_id}.",
-        "error_general": "An error occurred. Please try again later.",
-        "service_unavailable": "Service is temporarily unavailable. Please try again later.",
-        "your_capsules": "Your capsules:",
-        "no_capsules": "You have no capsules.",
-        "created_at": "Created at",
+        "capsule_created": "✅ Capsule #{capsule_id} created!\nAdd text, photos, or videos to it.",
+        "enter_recipients": "👥 Enter Telegram usernames of recipients separated by spaces.\n*Example:* @Friend1 @Friend2\nThey’ll receive the capsule when you send it or the scheduled date arrives.",
+        "select_capsule": "📦 Enter the capsule number for the action:",
+        "invalid_capsule_id": "❌ Invalid capsule ID. Check your capsule list with 'View Capsules'.",
+        "recipients_added": "✅ Recipients added to capsule #{capsule_id}!\nNow you can set a send date or send it immediately.",
+        "error_general": "⚠️ Something went wrong. Try again or contact support @SupportBot.",
+        "service_unavailable": "🛠 Service temporarily unavailable. Please wait and try again later.",
+        "your_capsules": "📋 *Your Time Capsules:*\n",
+        "no_capsules": "📭 You don’t have any capsules yet. Create your first one with 'Create Capsule'!",
+        "created_at": "Created",
         "status": "Status",
-        "scheduled": "Scheduled",
-        "draft": "Draft",
-        "enter_capsule_id_to_send": "Enter the capsule ID to send:",
-        "no_recipients": "No recipients found for this capsule.",
-        "capsule_received": "You received a capsule from @{sender}!",
-        "capsule_sent": "Capsule sent to @{recipient}.",
-        "recipient_not_registered": "Recipient @{recipient} is not registered in the bot.",
-        "confirm_delete": "Are you sure you want to delete this capsule?",
-        "capsule_deleted": "Capsule #{capsule_id} deleted successfully.",
-        "delete_canceled": "Deletion canceled.",
-        "enter_new_content": "Enter new content for the capsule:",
-        "capsule_edited": "Capsule #{capsule_id} edited successfully.",
-        "recipients_list": "Recipients for capsule #{capsule_id}:\n{recipients}",
-        "no_recipients_for_capsule": "No recipients found for capsule #{capsule_id}.",
-        "choose_send_date": "Choose send date:",
+        "scheduled": "⏳ Scheduled",
+        "draft": "✏️ Draft",
+        "enter_capsule_id_to_send": "📨 Enter the capsule ID to send immediately (e.g., #5):",
+        "no_recipients": "❌ This capsule has no recipients. Add them with 'Add Recipient'.",
+        "capsule_received": "🎉 You’ve received a time capsule from @{sender}!\nHere’s its content:",
+        "capsule_sent": "📬 Capsule successfully sent to @{recipient}!\nThey’ll see it now.",
+        "recipient_not_registered": "⚠️ Recipient @{recipient} isn’t registered with the bot and won’t receive the capsule.",
+        "confirm_delete": "🗑 Are you sure you want to delete this capsule? This action cannot be undone.",
+        "capsule_deleted": "✅ Capsule #{capsule_id} deleted.",
+        "delete_canceled": "❌ Deletion canceled. The capsule remains intact.",
+        "enter_new_content": "✏️ Enter new text for the capsule (old content will be replaced):",
+        "capsule_edited": "✅ Capsule #{capsule_id} updated with new content!",
+        "recipients_list": "👥 Recipients of capsule #{capsule_id}:\n{recipients}",
+        "no_recipients_for_capsule": "📭 No recipients found for capsule #{capsule_id}.",
+        "choose_send_date": "📅 When should the capsule be sent?\nChoose an option:",
         "through_week": "In a week",
         "through_month": "In a month",
-        "select_date": "Select date",
-        "date_selected": "Date selected: {date}",
-        "date_set": "Send date set to {date}.",
-        "support_author": "Support the author: {url}",
-        "create_capsule_first": "Please create a capsule first.",
-        "text_added": "Text added to the capsule.",
-        "photo_added": "Photo added to the capsule.",
-        "video_added": "Video added to the capsule.",
-        "audio_added": "Audio added to the capsule.",
-        "document_added": "Document added to the capsule.",
-        "sticker_added": "Sticker added to the capsule.",
-        "voice_added": "Voice message added to the capsule.",
-        "not_registered": "You are not registered in the bot.",
-        "not_your_capsule": "This capsule does not belong to you.",
+        "select_date": "Select a date",
+        "date_selected": "📅 You’ve selected: {date}\nThe capsule will be sent at this time.",
+        "date_set": "✅ Capsule send date set to {date}. Stay tuned!",
+        "support_author": "💖 Support the bot’s author:\n{url}\nThanks for helping the project grow!",
+        "create_capsule_first": "📦 First, create a capsule with 'Create Capsule' to add content.",
+        "text_added": "✅ Text message added to the capsule!",
+        "photo_added": "✅ Photo added to the capsule!",
+        "video_added": "✅ Video added to the capsule!",
+        "audio_added": "✅ Audio added to the capsule!",
+        "document_added": "✅ Document added to the capsule!",
+        "sticker_added": "✅ Sticker added to the capsule!",
+        "voice_added": "✅ Voice message added to the capsule!",
+        "not_registered": "⚠️ You’re not registered with the bot. Press /start to begin.",
+        "not_your_capsule": "❌ This capsule doesn’t belong to you. You can only manage your own capsules.",
         "today": "Today",
         "tomorrow": "Tomorrow",
-        "create_step_1": "",
-        "create_step_2": "",
-        "create_step_3": "",
-        "content_limit_exceeded": "Content limit exceeded: max {max} items of type {type}."
+        "content_limit_exceeded": "⚠️ Limit exceeded: you’ve added too many {type}.",
     }
 }
 
@@ -329,10 +318,7 @@ def get_capsule_recipients(capsule_id: int) -> list:
 
 # Обработчики команд
 async def start(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /start.
-    Отправляет приветственное сообщение и клавиатуру с доступными командами.
-    """
+    """Обработчик команды /start. Отправляет приветственное сообщение и клавиатуру с доступными командами."""
     user = update.message.from_user
     add_user(user.username or str(user.id), user.id, update.message.chat_id)
     keyboard = [
@@ -347,10 +333,7 @@ async def start(update: Update, context: CallbackContext):
     await update.message.reply_text(t('start_message'), reply_markup=reply_markup)
 
 async def help_command(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /help.
-    Отправляет сообщение с доступными командами и их описанием.
-    """
+    """Обработчик команды /help. Отправляет сообщение с доступными командами и их описанием."""
     keyboard = [
         ["📦 Создать капсулу", "📂 Просмотреть капсулы"],
         ["👤 Добавить получателя", "📨 Отправить капсулу"],
@@ -363,10 +346,7 @@ async def help_command(update: Update, context: CallbackContext):
     await update.message.reply_text(t('help_message'), reply_markup=reply_markup)
 
 async def create_capsule_command(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /create_capsule.
-    Создает новую капсулу и сохраняет ее в базе данных.
-    """
+    """Обработчик команды /create_capsule. Создает новую капсулу и сохраняет ее в базе данных."""
     try:
         user = update.message.from_user
         existing_user = fetch_data("users", {"telegram_id": user.id})
@@ -375,15 +355,12 @@ async def create_capsule_command(update: Update, context: CallbackContext):
             creator_id = response[0]['id']
         else:
             creator_id = existing_user[0]['id']
-
         initial_content = json.dumps({"text": [], "photos": [], "videos": [], "audios": [], "documents": [], "stickers": [], "voices": []}, ensure_ascii=False)
         user_capsule_number = generate_unique_capsule_number(creator_id)
         capsule_id = create_capsule(creator_id, "Без названия", initial_content, user_capsule_number)
-
         if capsule_id == -1:
             await update.message.reply_text(t('service_unavailable'))
             return
-
         context.user_data['current_capsule'] = capsule_id
         context.user_data['capsule_content'] = json.loads(initial_content)
         context.user_data['state'] = CREATING_CAPSULE
@@ -393,26 +370,18 @@ async def create_capsule_command(update: Update, context: CallbackContext):
         await update.message.reply_text(t('error_general'))
 
 async def show_capsule_selection(update: Update, context: CallbackContext, action: str):
-    """
-    Запрашивает номер капсулы для выполнения действия.
-    """
+    """Запрашивает номер капсулы для выполнения действия."""
     await update.message.reply_text(t('select_capsule'))
     context.user_data['action'] = action
     return True
 
 async def add_recipient_command(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /add_recipient.
-    Запрашивает номер капсулы для добавления получателей.
-    """
+    """Обработчик команды /add_recipient. Запрашивает номер капсулы для добавления получателей."""
     if await show_capsule_selection(update, context, "add_recipient"):
         context.user_data['state'] = SELECTING_CAPSULE_FOR_RECIPIENTS
 
 async def view_capsules_command(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /view_capsules.
-    Показывает список капсул пользователя.
-    """
+    """Обработчик команды /view_capsules. Показывает список капсул пользователя."""
     try:
         capsules = get_user_capsules(update.message.from_user.id)
         if capsules:
@@ -425,58 +394,37 @@ async def view_capsules_command(update: Update, context: CallbackContext):
         await update.message.reply_text(t('error_general'))
 
 async def send_capsule_command(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /send_capsule.
-    Запрашивает номер капсулы для отправки.
-    """
+    """Обработчик команды /send_capsule. Запрашивает номер капсулы для отправки."""
     if await show_capsule_selection(update, context, "send_capsule"):
         context.user_data['state'] = "sending_capsule"
 
 async def delete_capsule_command(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /delete_capsule.
-    Запрашивает номер капсулы для удаления.
-    """
+    """Обработчик команды /delete_capsule. Запрашивает номер капсулы для удаления."""
     if await show_capsule_selection(update, context, "delete_capsule"):
         context.user_data['state'] = "deleting_capsule"
 
 async def edit_capsule_command(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /edit_capsule.
-    Запрашивает номер капсулы для редактирования.
-    """
+    """Обработчик команды /edit_capsule. Запрашивает номер капсулы для редактирования."""
     if await show_capsule_selection(update, context, "edit_capsule"):
         context.user_data['state'] = "editing_capsule"
 
 async def view_recipients_command(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /view_recipients.
-    Запрашивает номер капсулы для просмотра получателей.
-    """
+    """Обработчик команды /view_recipients. Запрашивает номер капсулы для просмотра получателей."""
     if await show_capsule_selection(update, context, "view_recipients"):
         context.user_data['state'] = "viewing_recipients"
 
 async def select_send_date(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /select_send_date.
-    Запрашивает номер капсулы для установки даты отправки.
-    """
+    """Обработчик команды /select_send_date. Запрашивает номер капсулы для установки даты отправки."""
     if await show_capsule_selection(update, context, "select_send_date"):
         context.user_data['state'] = SELECTING_CAPSULE
 
 async def support_author(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /support_author.
-    Отправляет сообщение с ссылкой для поддержки автора.
-    """
+    """Обработчик команды /support_author. Отправляет сообщение с ссылкой для поддержки автора."""
     DONATION_URL = "https://www.donationalerts.com/r/lunarisqqq"
     await update.message.reply_text(t('support_author', url=DONATION_URL))
 
 async def change_language(update: Update, context: CallbackContext):
-    """
-    Обработчик команды /change_language.
-    Показывает кнопки для выбора языка.
-    """
+    """Обработчик команды /change_language. Показывает кнопки для выбора языка."""
     keyboard = [
         [InlineKeyboardButton("Русский", callback_data="ru")],
         [InlineKeyboardButton("English", callback_data="en")]
@@ -486,10 +434,7 @@ async def change_language(update: Update, context: CallbackContext):
 
 # Обработчики callback-запросов
 async def handle_language_selection(update: Update, context: CallbackContext):
-    """
-    Обработчик выбора языка.
-    Обновляет язык интерфейса и отправляет подтверждение.
-    """
+    """Обработчик выбора языка. Обновляет язык интерфейса и отправляет подтверждение."""
     global LOCALE
     query = update.callback_query
     lang = query.data
@@ -508,10 +453,7 @@ async def handle_language_selection(update: Update, context: CallbackContext):
     await context.bot.send_message(chat_id=update.effective_chat.id, text=t('start_message'), reply_markup=reply_markup)
 
 async def handle_capsule_selection(update: Update, context: CallbackContext):
-    """
-    Обработчик выбора капсулы.
-    Выполняет действия в зависимости от выбранного действия.
-    """
+    """Обработчик выбора капсулы. Выполняет действия в зависимости от выбранного действия."""
     text = update.message.text.strip()
     try:
         capsule_id = int(text.replace('#', ''))
@@ -519,11 +461,9 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
     except ValueError:
         await update.message.reply_text(t('invalid_capsule_id'))
         return
-
     action = context.user_data.get('action')
     if not await check_capsule_ownership(update, capsule_id):
         return
-
     if action == "add_recipient":
         await update.message.reply_text(t('enter_recipients'))
         context.user_data['state'] = "adding_recipient"
@@ -547,10 +487,7 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
         context.user_data['state'] = "selecting_send_date"
 
 async def handle_date_buttons(update: Update, context: CallbackContext):
-    """
-    Обработчик выбора даты отправки.
-    Устанавливает дату отправки на неделю, месяц или позволяет выбрать дату из календаря.
-    """
+    """Обработчик выбора даты отправки. Устанавливает дату отправки на неделю, месяц или позволяет выбрать дату из календаря."""
     query = update.callback_query
     if query.data == 'week':
         send_date = datetime.now(pytz.utc) + timedelta(weeks=1)
@@ -564,10 +501,7 @@ async def handle_date_buttons(update: Update, context: CallbackContext):
     await save_send_date(update, context)
 
 async def handle_calendar(update: Update, context: CallbackContext):
-    """
-    Обработчик выбора даты из календаря.
-    Показывает кнопки с датами для выбора.
-    """
+    """Обработчик выбора даты из календаря. Показывает кнопки с датами для выбора."""
     query = update.callback_query
     current_date = datetime.now(pytz.utc)
     keyboard = [[InlineKeyboardButton(f"{(current_date + timedelta(days=i)).day} ({t('today') if i == 0 else t('tomorrow') if i == 1 else f'{i} days'})", callback_data=f"day_{(current_date + timedelta(days=i)).day}")] for i in range(8)]
@@ -575,10 +509,7 @@ async def handle_calendar(update: Update, context: CallbackContext):
     await query.edit_message_text(t('select_date'), reply_markup=reply_markup)
 
 async def handle_calendar_selection(update: Update, context: CallbackContext):
-    """
-    Обработчик выбора даты из календаря.
-    Устанавливает выбранную дату для отправки капсулы.
-    """
+    """Обработчик выбора даты из календаря. Устанавливает выбранную дату для отправки капсулы."""
     query = update.callback_query
     selected_day = int(query.data.split('_')[1])
     send_date = datetime.now(pytz.utc).replace(day=selected_day, hour=0, minute=0, second=0, microsecond=0)
@@ -587,10 +518,7 @@ async def handle_calendar_selection(update: Update, context: CallbackContext):
     await save_send_date(update, context)
 
 async def handle_delete_confirmation(update: Update, context: CallbackContext):
-    """
-    Обработчик подтверждения удаления капсулы.
-    Удаляет капсулу и отправляет подтверждение.
-    """
+    """Обработчик подтверждения удаления капсулы. Удаляет капсулу и отправляет подтверждение."""
     query = update.callback_query
     if query.data == "confirm_delete":
         capsule_id = context.user_data.get('selected_capsule_id')
@@ -601,13 +529,9 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext):
     context.user_data['state'] = "idle"
 
 async def handle_text(update: Update, context: CallbackContext):
-    """
-    Обработчик текстовых сообщений.
-    Выполняет действия в зависимости от текущего состояния.
-    """
+    """Обработчик текстовых сообщений. Выполняет действия в зависимости от текущего состояния."""
     text = update.message.text.strip()
     state = context.user_data.get('state', 'idle')
-
     actions = {
         "📦 Создать капсулу": create_capsule_command,
         "📂 Просмотреть капсулы": view_capsules_command,
@@ -621,7 +545,6 @@ async def handle_text(update: Update, context: CallbackContext):
         "💸 Поддержать автора": support_author,
         "🌍 Сменить язык": change_language
     }
-
     if text in actions:
         await actions[text](update, context)
     elif state == CREATING_CAPSULE:
@@ -636,6 +559,7 @@ async def handle_text(update: Update, context: CallbackContext):
         await update.message.reply_text(t('create_capsule_first'))
 
 async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
+    """Обработчик шагов создания капсулы. Добавляет текст в капсулу."""
     capsule_content = context.user_data.get('capsule_content', {"text": []})
     if len(capsule_content['text']) < MAX_TEXTS:
         capsule_content['text'].append(text)
@@ -643,10 +567,10 @@ async def handle_create_capsule_steps(update: Update, context: CallbackContext, 
         save_capsule_content(context, context.user_data['current_capsule'])
         await update.message.reply_text(t('text_added'))
     else:
-        await update.message.reply_text(t('content_limit_exceeded', max=MAX_TEXTS, type="текст"))
-        return
+        await update.message.reply_text(t('content_limit_exceeded', type="текст"))
 
 async def handle_recipient(update: Update, context: CallbackContext):
+    """Обработчик добавления получателей."""
     try:
         usernames = set(update.message.text.strip().split())
         capsule_id = context.user_data.get('selected_capsule_id')
@@ -659,24 +583,35 @@ async def handle_recipient(update: Update, context: CallbackContext):
         await update.message.reply_text(t('error_general'))
 
 async def handle_send_capsule_logic(update: Update, context: CallbackContext, capsule_id: int):
+    """Логика отправки капсулы."""
     try:
-        capsule = fetch_data("capsules", {"id": capsule_id})[0]
+        capsule = fetch_data("capsules", {"id": capsule_id})
+        if not capsule:
+            await update.message.reply_text(t('invalid_capsule_id'))
+            return
         recipients = get_capsule_recipients(capsule_id)
         if not recipients:
             await update.message.reply_text(t('no_recipients'))
             return
-        content = json.loads(decrypt_data_aes(capsule['content'], ENCRYPTION_KEY_BYTES))
+        content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
         for recipient in recipients:
             chat_id = get_chat_id(recipient['recipient_username'])
             if chat_id:
                 await context.bot.send_message(chat_id=chat_id, text=t('capsule_received', sender=update.effective_user.username))
-                for item in content.get('text', []): await context.bot.send_message(chat_id, item)
-                for item in content.get('stickers', []): await context.bot.send_sticker(chat_id, item)
-                for item in content.get('photos', []): await context.bot.send_photo(chat_id, item)
-                for item in content.get('documents', []): await context.bot.send_document(chat_id, item)
-                for item in content.get('voices', []): await context.bot.send_voice(chat_id, item)
-                for item in content.get('videos', []): await context.bot.send_video(chat_id, item)
-                for item in content.get('audios', []): await context.bot.send_audio(chat_id, item)
+                for item in content.get('text', []):
+                    await context.bot.send_message(chat_id, item)
+                for item in content.get('stickers', []):
+                    await context.bot.send_sticker(chat_id, item)
+                for item in content.get('photos', []):
+                    await context.bot.send_photo(chat_id, item)
+                for item in content.get('documents', []):
+                    await context.bot.send_document(chat_id, item)
+                for item in content.get('voices', []):
+                    await context.bot.send_voice(chat_id, item)
+                for item in content.get('videos', []):
+                    await context.bot.send_video(chat_id, item)
+                for item in content.get('audios', []):
+                    await context.bot.send_audio(chat_id, item)
                 await update.message.reply_text(t('capsule_sent', recipient=recipient['recipient_username']))
             else:
                 await update.message.reply_text(t('recipient_not_registered', recipient=recipient['recipient_username']))
@@ -686,6 +621,7 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
         await update.message.reply_text(t('service_unavailable'))
 
 async def handle_edit_capsule_content(update: Update, context: CallbackContext):
+    """Обработчик редактирования содержимого капсулы."""
     try:
         capsule_id = context.user_data.get('selected_capsule_id')
         content = json.dumps({"text": [update.message.text]}, ensure_ascii=False)
@@ -697,6 +633,7 @@ async def handle_edit_capsule_content(update: Update, context: CallbackContext):
         await update.message.reply_text(t('error_general'))
 
 async def handle_view_recipients_logic(update: Update, context: CallbackContext, capsule_id: int):
+    """Логика просмотра получателей капсулы."""
     try:
         recipients = get_capsule_recipients(capsule_id)
         if recipients:
@@ -710,12 +647,13 @@ async def handle_view_recipients_logic(update: Update, context: CallbackContext,
         await update.message.reply_text(t('error_general'))
 
 async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str, max_limit: int):
+    """Обработчик медиафайлов."""
     if not context.user_data.get('current_capsule'):
         await update.message.reply_text(t('create_capsule_first'))
         return
     capsule_content = context.user_data.get('capsule_content', {media_type: []})
     if len(capsule_content[media_type]) >= max_limit:
-        await update.message.reply_text(t('content_limit_exceeded', max=max_limit, type=media_type[:-1]))
+        await update.message.reply_text(t('content_limit_exceeded', type=media_type[:-1]))
         return
     try:
         file_id = (await getattr(update.message, file_attr).get_file()).file_id
@@ -802,10 +740,8 @@ async def check_bot_permissions(context: CallbackContext):
 # Главная функция
 async def main():
     start_services()
-
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     await check_bot_permissions(application)
-
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("create_capsule", create_capsule_command))
@@ -818,12 +754,10 @@ async def main():
     application.add_handler(CommandHandler("support_author", support_author))
     application.add_handler(CommandHandler("select_send_date", select_send_date))
     application.add_handler(CommandHandler("change_language", change_language))
-
     application.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r'^(ru|en)$'))
     application.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r'^(week|month|calendar)$'))
     application.add_handler(CallbackQueryHandler(handle_calendar_selection, pattern=r'^day_\d+$'))
     application.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r'^(confirm_delete|cancel_delete)$'))
-
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     application.add_handler(MessageHandler(filters.VIDEO, handle_video))
@@ -831,7 +765,6 @@ async def main():
     application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
     application.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
     application.add_handler(MessageHandler(filters.VOICE, handle_voice))
-
     await application.initialize()
     await post_init(application)
     scheduler.start()
