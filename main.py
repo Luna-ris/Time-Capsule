@@ -49,7 +49,7 @@ bot: Optional[Bot] = None
 # Состояния беседы
 CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE = range(8)
 
-# Ограничения контента
+# Ограничения контента (оставлены для логики, но убраны из сообщений)
 MAX_TEXTS = 10
 MAX_PHOTOS = 5
 MAX_VIDEOS = 5
@@ -78,7 +78,7 @@ TRANSLATIONS = {
                         "💡 Подсказка: Создайте капсулу и экспериментируйте с медиа!",
         "change_language": "🌍 Сменить язык",
         "select_language": "Выберите ваш язык:",
-        "capsule_created": "✅ Капсула #{capsule_id} создана!\nТеперь добавьте в неё текст, фото, видео или другой контент. Лимиты: до {max_texts} текстов, {max_photos} фото, {max_videos} видео.",
+        "capsule_created": "✅ Капсула #{capsule_id} создана!\nДобавьте в неё текст, фото или видео.",
         "enter_recipients": "👥 Введите Telegram-имена получателей через пробел.\n*Пример:* @Friend1 @Friend2\nОни получат капсулу, когда вы её отправите или наступит заданная дата.",
         "select_capsule": "📦 Выберите капсулу из списка ниже:",
         "invalid_capsule_id": "❌ Неверный ID капсулы. Проверьте список ваших капсул с помощью 'Просмотреть капсулы'.",
@@ -125,7 +125,7 @@ TRANSLATIONS = {
         "create_step_1": "📝 *Шаг 1:* Добавьте текст, фото, видео или другой контент в капсулу.\n*Пример:* Напишите сообщение или отправьте фото.",
         "create_step_2": "👥 *Шаг 2:* Укажите получателей капсулы.\n*Пример:* @Friend1 @Friend2",
         "create_step_3": "📅 *Шаг 3:* Установите дату отправки или завершите создание.\nНапишите 'завершить', чтобы сохранить как черновик, или выберите дату.",
-        "content_limit_exceeded": "⚠️ Превышен лимит: максимум {max} {type} в одной капсуле.",
+        "content_limit_exceeded": "⚠️ Превышен лимит: вы добавили слишком много {type}.",
         # Перевод кнопок
         "create_capsule_button": "📦 Создать капсулу",
         "view_capsules_button": "📂 Просмотреть капсулы",
@@ -156,7 +156,7 @@ TRANSLATIONS = {
                         "💡 Tip: Create a capsule and experiment with media!",
         "change_language": "🌍 Change Language",
         "select_language": "Select your language:",
-        "capsule_created": "✅ Capsule #{capsule_id} created!\nNow add text, photos, videos, or other content. Limits: up to {max_texts} texts, {max_photos} photos, {max_videos} videos.",
+        "capsule_created": "✅ Capsule #{capsule_id} created!\nAdd text, photos, or videos to it.",
         "enter_recipients": "👥 Enter Telegram usernames of recipients separated by spaces.\n*Example:* @Friend1 @Friend2\nThey’ll receive the capsule when you send it or the scheduled date arrives.",
         "select_capsule": "📦 Select a capsule from the list below:",
         "invalid_capsule_id": "❌ Invalid capsule ID. Check your capsule list with 'View Capsules'.",
@@ -203,7 +203,7 @@ TRANSLATIONS = {
         "create_step_1": "📝 *Step 1:* Add text, photos, videos, or other content to the capsule.\n*Example:* Write a message or send a photo.",
         "create_step_2": "👥 *Step 2:* Specify the capsule’s recipients.\n*Example:* @Friend1 @Friend2",
         "create_step_3": "📅 *Step 3:* Set a send date or finish creating.\nType 'finish' to save as a draft, or select a date.",
-        "content_limit_exceeded": "⚠️ Limit exceeded: maximum {max} {type} per capsule.",
+        "content_limit_exceeded": "⚠️ Limit exceeded: you’ve added too many {type}.",
         # Перевод кнопок
         "create_capsule_button": "📦 Create Capsule",
         "view_capsules_button": "📂 View Capsules",
@@ -397,7 +397,7 @@ async def create_capsule_command(update: Update, context: CallbackContext):
         context.user_data['current_capsule'] = capsule_id
         context.user_data['capsule_content'] = json.loads(initial_content)
         context.user_data['state'] = CREATING_CAPSULE
-        await update.message.reply_text(t('capsule_created', capsule_id=capsule_id, max_texts=MAX_TEXTS, max_photos=MAX_PHOTOS, max_videos=MAX_VIDEOS))
+        await update.message.reply_text(t('capsule_created', capsule_id=capsule_id))
     except Exception as e:
         logger.error(f"Ошибка при создании капсулы: {e}")
         await update.message.reply_text(t('error_general'))
@@ -574,7 +574,7 @@ async def handle_text(update: Update, context: CallbackContext):
     elif text and context.user_data.get('current_capsule'):
         capsule_content = context.user_data.get('capsule_content', {"text": []})
         if len(capsule_content['text']) >= MAX_TEXTS:
-            await update.message.reply_text(t('content_limit_exceeded', max=MAX_TEXTS, type="текст" if LOCALE == 'ru' else "texts"))
+            await update.message.reply_text(t('content_limit_exceeded', type="текст" if LOCALE == 'ru' else "texts"))
             return
         capsule_content['text'].append(text)
         context.user_data['capsule_content'] = capsule_content
@@ -587,7 +587,7 @@ async def handle_create_capsule_steps(update: Update, context: CallbackContext, 
     if "Шаг 1" in context.user_data.get('last_message', '') or "Step 1" in context.user_data.get('last_message', ''):
         capsule_content = context.user_data.get('capsule_content', {"text": []})
         if len(capsule_content['text']) >= MAX_TEXTS:
-            await update.message.reply_text(t('content_limit_exceeded', max=MAX_TEXTS, type="текст" if LOCALE == 'ru' else "texts"))
+            await update.message.reply_text(t('content_limit_exceeded', type="текст" if LOCALE == 'ru' else "texts"))
             return
         capsule_content['text'].append(text)
         context.user_data['capsule_content'] = capsule_content
@@ -680,7 +680,7 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         return
     capsule_content = context.user_data.get('capsule_content', {media_type: []})
     if len(capsule_content[media_type]) >= max_limit:
-        await update.message.reply_text(t('content_limit_exceeded', max=max_limit, type=media_type[:-1]))
+        await update.message.reply_text(t('content_limit_exceeded', type=media_type[:-1]))
         return
     file_id = (await getattr(update.message, file_attr).get_file()).file_id
     capsule_content.setdefault(media_type, []).append(file_id)
