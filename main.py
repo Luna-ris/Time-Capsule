@@ -12,7 +12,7 @@ from cryptography.hazmat.backends import default_backend
 import json
 from datetime import datetime, timedelta
 from supabase import create_client, Client
-from typing import Optional, Dict
+from typing import Optional, List  # Добавлен импорт Optional и List
 from dotenv import load_dotenv
 from tasks import send_capsule_task
 import i18n
