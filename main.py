@@ -744,19 +744,15 @@ async def save_send_date(update: Update, context: CallbackContext):
             await update.callback_query.edit_message_text(t('error_general'))
             return
         
-        # Сначала выполняем все операции
         edit_capsule(capsule_id, scheduled_at=send_date)
+        logger.info(f"Планирую задачу для капсулы {capsule_id} на {send_date}")
         send_capsule_task.apply_async((capsule_id,), eta=send_date)
+        logger.info(f"Задача для капсулы {capsule_id} успешно запланирована")
         
-        # Только после успешного выполнения отправляем сообщение
         await update.callback_query.edit_message_text(t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M')))
         context.user_data['state'] = "idle"
-        
-    except ConnectionError as e:
-        logger.error(f"Ошибка подключения к базе данных: {e}")
-        await update.callback_query.edit_message_text(t('service_unavailable'))
     except Exception as e:
-        logger.error(f"Ошибка при установке даты: {e}")
+        logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
         await update.callback_query.edit_message_text(t('error_general'))
 
 async def post_init(application):
