@@ -17,32 +17,6 @@ import sys
 import pytz
 import nest_asyncio
 
-# Настройка логирования
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
-nest_asyncio.apply()
-
-# Инициализация переменных окружения
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
-if not all([SUPABASE_URL, SUPABASE_KEY, TELEGRAM_TOKEN, ENCRYPTION_KEY]):
-    logger.error("Отсутствуют необходимые переменные окружения.")
-    sys.exit(1)
-ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
-if len(ENCRYPTION_KEY_BYTES) != 32:
-    logger.error("Длина ключа шифрования должна быть 32 байта для AES-256")
-    sys.exit(1)
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-bot: Optional[Bot] = None
-
-# Состояния беседы
-CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, ADDING_RECIPIENT, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE, ENTERING_CUSTOM_DATE, SELECTING_CAPSULE = range(10)
-
 # Локализация
 LOCALE = 'ru'
 TRANSLATIONS = {
@@ -169,193 +143,193 @@ TRANSLATIONS = {
         "today": "Today",
         "tomorrow": "Tomorrow",
         "content_limit_exceeded": "⚠️ Limit exceeded: you’ve added too many {type}.",
-    }
+    },
     'es': {
-    "start_message": "¡Bienvenido a TimeCapsuleBot! 📬\nTe ayudaré a crear cápsulas del tiempo con texto, fotos, videos y más para enviarlas a ti mismo o a tus amigos en el futuro.\n¡Usa los botones de abajo para comenzar!",
-    "help_message": "📋 *Lista de comandos de TimeCapsuleBot*\n\n"
-                    "/start - Inicia el bot y abre el menú principal.\n"
-                    "/create_capsule - Crea una nueva cápsula del tiempo.\n*Ejemplo:* Agrega texto, fotos o videos.\n"
-                    "/add_recipient - Agrega destinatarios a una cápsula existente.\n*Ejemplo:* @Friend1 @Friend2\n"
-                    "/view_capsules - Ver una lista de tus cápsulas con su estado.\n"
-                    "/send_capsule - Envía una cápsula a los destinatarios inmediatamente.\n"
-                    "/delete_capsule - Elimina una cápsula si ya no la necesitas.\n"
-                    "/edit_capsule - Edita el contenido de la cápsula (texto).\n"
-                    "/view_recipients - Ver quién recibirá tu cápsula.\n"
-                    "/select_send_date - Establece una fecha de envío para la cápsula.\n*Ejemplo:* En una semana o un día específico.\n"
-                    "/support_author - Apoya al desarrollador del bot.\n"
-                    "/change_language - Cambia el idioma de la interfaz.\n\n",
-    "change_language": "🌍 Cambiar idioma",
-    "select_language": "Selecciona tu idioma:",
-    "capsule_created": "✅ ¡Cápsula #{capsule_id} creada!\nAgrega texto, fotos o videos a ella.",
-    "enter_recipients": "👥 Ingresa los nombres de usuario de Telegram de los destinatarios separados por espacios.\n*Ejemplo:* @Friend1 @Friend2\nEllos recibirán la cápsula cuando la envíes o llegue la fecha programada.",
-    "select_capsule": "📦 Ingresa el número de la cápsula para la acción:",
-    "invalid_capsule_id": "❌ ID de cápsula inválido. Verifica tu lista de cápsulas con 'Ver cápsulas'.",
-    "recipients_added": "✅ ¡Destinatarios agregados a la cápsula #{capsule_id}!\nAhora puedes establecer una fecha de envío o enviarla inmediatamente.",
-    "error_general": "⚠️ Algo salió mal. Inténtalo de nuevo o contacta con soporte.",
-    "service_unavailable": "🛠 El servicio no está disponible temporalmente. Por favor, espera e inténtalo de nuevo más tarde.",
-    "your_capsules": "📋 *Tus cápsulas del tiempo:*\n",
-    "no_capsules": "📭 Todavía no tienes cápsulas. ¡Crea tu primera con 'Crear cápsula'!",
-    "created_at": "Creado",
-    "status": "Estado",
-    "scheduled": "⏳ Programado",
-    "draft": "✏️ Borrador",
-    "enter_capsule_id_to_send": "📨 Ingresa el ID de la cápsula para enviar inmediatamente (por ejemplo, #5):",
-    "no_recipients": "❌ Esta cápsula no tiene destinatarios. Agrega algunos con 'Agregar destinatario'.",
-    "capsule_received": "🎉 ¡Has recibido una cápsula del tiempo de @{sender}!\nAquí está su contenido:",
-    "capsule_sent": "📬 ¡Cápsula enviada exitosamente a @{recipient}!\nLa verán ahora.",
-    "recipient_not_registered": "⚠️ El destinatario @{recipient} no está registrado en el bot y no recibirá la cápsula.",
-    "confirm_delete": "🗑 ¿Estás seguro de que quieres eliminar esta cápsula? Esta acción no se puede deshacer.",
-    "capsule_deleted": "✅ Cápsula #{capsule_id} eliminada.",
-    "delete_canceled": "❌ Eliminación cancelada. La cápsula permanece intacta.",
-    "enter_new_content": "✏️ Ingresa el nuevo texto para la cápsula (el contenido antiguo será reemplazado):",
-    "capsule_edited": "✅ ¡Cápsula #{capsule_id} actualizada con nuevo contenido!",
-    "recipients_list": "👥 Destinatarios de la cápsula #{capsule_id}:\n{recipients}",
-    "no_recipients_for_capsule": "📭 No se encontraron destinatarios para la cápsula #{capsule_id}.",
-    "choose_send_date": "📅 ¿Cuándo enviar la cápsula?\nElige una opción:",
-    "through_week": "En una semana",
-    "through_month": "En un mes",
-    "select_date": "Seleccionar fecha",
-    "date_selected": "📅 Has seleccionado: {date}\nLa cápsula será enviada en ese momento.",
-    "date_set": "✅ Fecha de envío de la cápsula establecida para {date}. ¡Mantente atento!",
-    "support_author": "💖 Apoya al autor del bot:\n{url}\n¡Gracias por ayudar a que el proyecto crezca!",
-    "create_capsule_first": "📦 Primero, crea una cápsula con 'Crear cápsula' para agregar contenido.",
-    "text_added": "✅ ¡Mensaje de texto agregado a la cápsula!",
-    "photo_added": "✅ ¡Foto agregada a la cápsula!",
-    "video_added": "✅ ¡Video agregado a la cápsula!",
-    "audio_added": "✅ ¡Audio agregado a la cápsula!",
-    "document_added": "✅ ¡Documento agregado a la cápsula!",
-    "sticker_added": "✅ ¡Sticker agregado a la cápsula!",
-    "voice_added": "✅ ¡Mensaje de voz agregado a la cápsula!",
-    "not_registered": "⚠️ No estás registrado en el bot. Presiona /start para comenzar.",
-    "not_your_capsule": "❌ Esta cápsula no te pertenece. Solo puedes gestionar tus propias cápsulas.",
-    "today": "Hoy",
-    "tomorrow": "Mañana",
-    "content_limit_exceeded": "⚠️ Límite excedido: has agregado demasiados {type}.",
-}
-'fr': {
-    "start_message": "Bienvenue sur TimeCapsuleBot ! 📬\nJe vais vous aider à créer des capsules temporelles avec du texte, des photos, des vidéos et plus encore pour les envoyer à vous-même ou à vos amis dans le futur.\nUtilisez les boutons ci-dessous pour commencer !",
-    "help_message": "📋 *Liste des commandes de TimeCapsuleBot*\n\n"
-                    "/start - Lancez le bot et ouvrez le menu principal.\n"
-                    "/create_capsule - Créez une nouvelle capsule temporelle.\n*Exemple:* Ajoutez du texte, des photos ou des vidéos.\n"
-                    "/add_recipient - Ajoutez des destinataires à une capsule existante.\n*Exemple:* @Friend1 @Friend2\n"
-                    "/view_capsules - Affichez une liste de vos capsules avec leur statut.\n"
-                    "/send_capsule - Envoyez une capsule aux destinataires immédiatement.\n"
-                    "/delete_capsule - Supprimez une capsule si vous n'en avez plus besoin.\n"
-                    "/edit_capsule - Modifiez le contenu de la capsule (texte).\n"
-                    "/view_recipients - Voyez qui recevra votre capsule.\n"
-                    "/select_send_date - Définissez une date d'envoi pour la capsule.\n*Exemple:* Dans une semaine ou un jour spécifique.\n"
-                    "/support_author - Soutenez le développeur du bot.\n"
-                    "/change_language - Changez la langue de l'interface.\n\n",
-    "change_language": "🌍 Changer de langue",
-    "select_language": "Sélectionnez votre langue :",
-    "capsule_created": "✅ Capsule #{capsule_id} créée !\nAjoutez-y du texte, des photos ou des vidéos.",
-    "enter_recipients": "👥 Entrez les noms d'utilisateur Telegram des destinataires séparés par des espaces.\n*Exemple:* @Friend1 @Friend2\nIls recevront la capsule lorsque vous l'enverrez ou à la date programmée.",
-    "select_capsule": "📦 Entrez le numéro de la capsule pour l'action :",
-    "invalid_capsule_id": "❌ ID de capsule invalide. Vérifiez votre liste de capsules avec 'Voir les capsules'.",
-    "recipients_added": "✅ Destinataires ajoutés à la capsule #{capsule_id} !\nVous pouvez maintenant définir une date d'envoi ou l'envoyer immédiatement.",
-    "error_general": "⚠️ Quelque chose s'est mal passé. Réessayez ou contactez le support.",
-    "service_unavailable": "🛠 Le service est temporairement indisponible. Veuillez patienter et réessayer plus tard.",
-    "your_capsules": "📋 *Vos capsules temporelles :*\n",
-    "no_capsules": "📭 Vous n'avez pas encore de capsules. Créez votre première avec 'Créer une capsule' !",
-    "created_at": "Créé",
-    "status": "Statut",
-    "scheduled": "⏳ Programmé",
-    "draft": "✏️ Brouillon",
-    "enter_capsule_id_to_send": "📨 Entrez l'ID de la capsule à envoyer immédiatement (par exemple, #5) :",
-    "no_recipients": "❌ Cette capsule n'a pas de destinataires. Ajoutez-en avec 'Ajouter un destinataire'.",
-    "capsule_received": "🎉 Vous avez reçu une capsule temporelle de @{sender} !\nVoici son contenu :",
-    "capsule_sent": "📬 Capsule envoyée avec succès à @{recipient} !\nIls la verront maintenant.",
-    "recipient_not_registered": "⚠️ Le destinataire @{recipient} n'est pas enregistré avec le bot et ne recevra pas la capsule.",
-    "confirm_delete": "🗑 Êtes-vous sûr de vouloir supprimer cette capsule ? Cette action est irréversible.",
-    "capsule_deleted": "✅ Capsule #{capsule_id} supprimée.",
-    "delete_canceled": "❌ Suppression annulée. La capsule reste intacte.",
-    "enter_new_content": "✏️ Entrez le nouveau texte pour la capsule (l'ancien contenu sera remplacé) :",
-    "capsule_edited": "✅ Capsule #{capsule_id} mise à jour avec le nouveau contenu !",
-    "recipients_list": "👥 Destinataires de la capsule #{capsule_id} :\n{recipients}",
-    "no_recipients_for_capsule": "📭 Aucun destinataire trouvé pour la capsule #{capsule_id}.",
-    "choose_send_date": "📅 Quand envoyer la capsule ?\nChoisissez une option :",
-    "through_week": "Dans une semaine",
-    "through_month": "Dans un mois",
-    "select_date": "Sélectionner une date",
-    "date_selected": "📅 Vous avez sélectionné : {date}\nLa capsule sera envoyée à ce moment-là.",
-    "date_set": "✅ Date d'envoi de la capsule définie sur {date}. Restez à l'écoute !",
-    "support_author": "💖 Soutenez l'auteur du bot :\n{url}\nMerci de contribuer à la croissance du projet !",
-    "create_capsule_first": "📦 Créez d'abord une capsule avec 'Créer une capsule' pour ajouter du contenu.",
-    "text_added": "✅ Message texte ajouté à la capsule !",
-    "photo_added": "✅ Photo ajoutée à la capsule !",
-    "video_added": "✅ Vidéo ajoutée à la capsule !",
-    "audio_added": "✅ Audio ajouté à la capsule !",
-    "document_added": "✅ Document ajouté à la capsule !",
-    "sticker_added": "✅ Sticker ajouté à la capsule !",
-    "voice_added": "✅ Message vocal ajouté à la capsule !",
-    "not_registered": "⚠️ Vous n'êtes pas enregistré avec le bot. Appuyez sur /start pour commencer.",
-    "not_your_capsule": "❌ Cette capsule ne vous appartient pas. Vous ne pouvez gérer que vos propres capsules.",
-    "today": "Aujourd'hui",
-    "tomorrow": "Demain",
-    "content_limit_exceeded": "⚠️ Limite dépassée : vous avez ajouté trop de {type}.",
-}
-'de': {
-    "start_message": "Willkommen bei TimeCapsuleBot! 📬\nIch helfe Ihnen, Zeitkapseln mit Text, Fotos, Videos und mehr zu erstellen, die Sie sich selbst oder Freunden in der Zukunft senden können.\nVerwenden Sie die Schaltflächen unten, um loszulegen!",
-    "help_message": "📋 *TimeCapsuleBot-Befehlsliste*\n\n"
-                    "/start - Starten Sie den Bot und öffnen Sie das Hauptmenü.\n"
-                    "/create_capsule - Erstellen Sie eine neue Zeitkapsel.\n*Beispiel:* Fügen Sie Text, Fotos oder Videos hinzu.\n"
-                    "/add_recipient - Fügen Sie Empfänger zu einer vorhandenen Kapsel hinzu.\n*Beispiel:* @Friend1 @Friend2\n"
-                    "/view_capsules - Zeigen Sie eine Liste Ihrer Kapseln mit deren Status an.\n"
-                    "/send_capsule - Senden Sie eine Kapsel sofort an die Empfänger.\n"
-                    "/delete_capsule - Löschen Sie eine Kapsel, wenn Sie sie nicht mehr benötigen.\n"
-                    "/edit_capsule - Bearbeiten Sie den Inhalt der Kapsel (Text).\n"
-                    "/view_recipients - Sehen Sie, wer Ihre Kapsel erhält.\n"
-                    "/select_send_date - Legen Sie ein Sendedatum für die Kapsel fest.\n*Beispiel:* In einer Woche oder an einem bestimmten Tag.\n"
-                    "/support_author - Unterstützen Sie den Entwickler des Bots.\n"
-                    "/change_language - Ändern Sie die Sprache der Benutzeroberfläche.\n\n",
-    "change_language": "🌍 Sprache ändern",
-    "select_language": "Wählen Sie Ihre Sprache:",
-    "capsule_created": "✅ Kapsel #{capsule_id} erstellt!\nFügen Sie Text, Fotos oder Videos hinzu.",
-    "enter_recipients": "👥 Geben Sie die Telegram-Benutzernamen der Empfänger getrennt durch Leerzeichen ein.\n*Beispiel:* @Friend1 @Friend2\nSie erhalten die Kapsel, wenn Sie sie senden oder das geplante Datum erreicht ist.",
-    "select_capsule": "📦 Geben Sie die Kapselnummer für die Aktion ein:",
-    "invalid_capsule_id": "❌ Ungültige Kapsel-ID. Überprüfen Sie Ihre Kapselliste mit 'Kapseln anzeigen'.",
-    "recipients_added": "✅ Empfänger zur Kapsel #{capsule_id} hinzugefügt!\nSie können jetzt ein Sendedatum festlegen oder sie sofort senden.",
-    "error_general": "⚠️ Etwas ist schief gelaufen. Versuchen Sie es erneut oder kontaktieren Sie den Support.",
-    "service_unavailable": "🛠 Der Dienst ist vorübergehend nicht verfügbar. Bitte warten Sie und versuchen Sie es später erneut.",
-    "your_capsules": "📋 *Ihre Zeitkapseln:*\n",
-    "no_capsules": "📭 Sie haben noch keine Kapseln. Erstellen Sie Ihre erste mit 'Kapsel erstellen'!",
-    "created_at": "Erstellt",
-    "status": "Status",
-    "scheduled": "⏳ Geplant",
-    "draft": "✏️ Entwurf",
-    "enter_capsule_id_to_send": "📨 Geben Sie die Kapsel-ID zum sofortigen Senden ein (z. B. #5):",
-    "no_recipients": "❌ Diese Kapsel hat keine Empfänger. Fügen Sie welche mit 'Empfänger hinzufügen' hinzu.",
-    "capsule_received": "🎉 Sie haben eine Zeitkapsel von @{sender} erhalten!\nHier ist ihr Inhalt:",
-    "capsule_sent": "📬 Kapsel erfolgreich an @{recipient} gesendet!\nSie sehen sie jetzt.",
-    "recipient_not_registered": "⚠️ Der Empfänger @{recipient} ist nicht beim Bot registriert und erhält die Kapsel nicht.",
-    "confirm_delete": "🗑 Sind Sie sicher, dass Sie diese Kapsel löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
-    "capsule_deleted": "✅ Kapsel #{capsule_id} gelöscht.",
-    "delete_canceled": "❌ Löschen abgebrochen. Die Kapsel bleibt unversehrt.",
-    "enter_new_content": "✏️ Geben Sie den neuen Text für die Kapsel ein (der alte Inhalt wird ersetzt):",
-    "capsule_edited": "✅ Kapsel #{capsule_id} mit neuem Inhalt aktualisiert!",
-    "recipients_list": "👥 Empfänger der Kapsel #{capsule_id}:\n{recipients}",
-    "no_recipients_for_capsule": "📭 Keine Empfänger für Kapsel #{capsule_id} gefunden.",
-    "choose_send_date": "📅 Wann soll die Kapsel gesendet werden?\nWählen Sie eine Option:",
-    "through_week": "In einer Woche",
-    "through_month": "In einem Monat",
-    "select_date": "Datum auswählen",
-    "date_selected": "📅 Sie haben ausgewählt: {date}\nDie Kapsel wird zu diesem Zeitpunkt gesendet.",
-    "date_set": "✅ Sendedatum der Kapsel auf {date} festgelegt. Bleiben Sie dran!",
-    "support_author": "💖 Unterstützen Sie den Autor des Bots:\n{url}\nVielen Dank für Ihre Unterstützung beim Wachstum des Projekts!",
-    "create_capsule_first": "📦 Erstellen Sie zuerst eine Kapsel mit 'Kapsel erstellen', um Inhalte hinzuzufügen.",
-    "text_added": "✅ Textnachricht zur Kapsel hinzugefügt!",
-    "photo_added": "✅ Foto zur Kapsel hinzugefügt!",
-    "video_added": "✅ Video zur Kapsel hinzugefügt!",
-    "audio_added": "✅ Audio zur Kapsel hinzugefügt!",
-    "document_added": "✅ Dokument zur Kapsel hinzugefügt!",
-    "sticker_added": "✅ Sticker zur Kapsel hinzugefügt!",
-    "voice_added": "✅ Sprachnachricht zur Kapsel hinzugefügt!",
-    "not_registered": "⚠️ Sie sind nicht beim Bot registriert. Drücken Sie /start, um zu beginnen.",
-    "not_your_capsule": "❌ Diese Kapsel gehört Ihnen nicht. Sie können nur Ihre eigenen Kapseln verwalten.",
-    "today": "Heute",
-    "tomorrow": "Morgen",
-    "content_limit_exceeded": "⚠️ Limit überschritten: Sie haben zu viele {type} hinzugefügt.",
-}
+        "start_message": "¡Bienvenido a TimeCapsuleBot! 📬\nTe ayudaré a crear cápsulas del tiempo con texto, fotos, videos y más para enviarlas a ti mismo o a tus amigos en el futuro.\n¡Usa los botones de abajo para comenzar!",
+        "help_message": "📋 *Lista de comandos de TimeCapsuleBot*\n\n"
+                        "/start - Inicia el bot y abre el menú principal.\n"
+                        "/create_capsule - Crea una nueva cápsula del tiempo.\n*Ejemplo:* Agrega texto, fotos o videos.\n"
+                        "/add_recipient - Agrega destinatarios a una cápsula existente.\n*Ejemplo:* @Friend1 @Friend2\n"
+                        "/view_capsules - Ver una lista de tus cápsulas con su estado.\n"
+                        "/send_capsule - Envía una cápsula a los destinatarios inmediatamente.\n"
+                        "/delete_capsule - Elimina una cápsula si ya no la necesitas.\n"
+                        "/edit_capsule - Edita el contenido de la cápsula (texto).\n"
+                        "/view_recipients - Ver quién recibirá tu cápsula.\n"
+                        "/select_send_date - Establece una fecha de envío para la cápsula.\n*Ejemplo:* En una semana o un día específico.\n"
+                        "/support_author - Apoya al desarrollador del bot.\n"
+                        "/change_language - Cambia el idioma de la interfaz.\n\n",
+        "change_language": "🌍 Cambiar idioma",
+        "select_language": "Selecciona tu idioma:",
+        "capsule_created": "✅ ¡Cápsula #{capsule_id} creada!\nAgrega texto, fotos o videos a ella.",
+        "enter_recipients": "👥 Ingresa los nombres de usuario de Telegram de los destinatarios separados por espacios.\n*Ejemplo:* @Friend1 @Friend2\nEllos recibirán la cápsula cuando la envíes o llegue la fecha programada.",
+        "select_capsule": "📦 Ingresa el número de la cápsula para la acción:",
+        "invalid_capsule_id": "❌ ID de cápsula inválido. Verifica tu lista de cápsulas con 'Ver cápsulas'.",
+        "recipients_added": "✅ ¡Destinatarios agregados a la cápsula #{capsule_id}!\nAhora puedes establecer una fecha de envío o enviarla inmediatamente.",
+        "error_general": "⚠️ Algo salió mal. Inténtalo de nuevo o contacta con soporte.",
+        "service_unavailable": "🛠 El servicio no está disponible temporalmente. Por favor, espera e inténtalo de nuevo más tarde.",
+        "your_capsules": "📋 *Tus cápsulas del tiempo:*\n",
+        "no_capsules": "📭 Todavía no tienes cápsulas. ¡Crea tu primera con 'Crear cápsula'!",
+        "created_at": "Creado",
+        "status": "Estado",
+        "scheduled": "⏳ Programado",
+        "draft": "✏️ Borrador",
+        "enter_capsule_id_to_send": "📨 Ingresa el ID de la cápsula para enviar inmediatamente (por ejemplo, #5):",
+        "no_recipients": "❌ Esta cápsula no tiene destinatarios. Agrega algunos con 'Agregar destinatario'.",
+        "capsule_received": "🎉 ¡Has recibido una cápsula del tiempo de @{sender}!\nAquí está su contenido:",
+        "capsule_sent": "📬 ¡Cápsula enviada exitosamente a @{recipient}!\nLa verán ahora.",
+        "recipient_not_registered": "⚠️ El destinatario @{recipient} no está registrado en el bot y no recibirá la cápsula.",
+        "confirm_delete": "🗑 ¿Estás seguro de que quieres eliminar esta cápsula? Esta acción no se puede deshacer.",
+        "capsule_deleted": "✅ Cápsula #{capsule_id} eliminada.",
+        "delete_canceled": "❌ Eliminación cancelada. La cápsula permanece intacta.",
+        "enter_new_content": "✏️ Ingresa el nuevo texto para la cápsula (el contenido antiguo será reemplazado):",
+        "capsule_edited": "✅ ¡Cápsula #{capsule_id} actualizada con nuevo contenido!",
+        "recipients_list": "👥 Destinatarios de la cápsula #{capsule_id}:\n{recipients}",
+        "no_recipients_for_capsule": "📭 No se encontraron destinatarios para la cápsula #{capsule_id}.",
+        "choose_send_date": "📅 ¿Cuándo enviar la cápsula?\nElige una opción:",
+        "through_week": "En una semana",
+        "through_month": "En un mes",
+        "select_date": "Seleccionar fecha",
+        "date_selected": "📅 Has seleccionado: {date}\nLa cápsula será enviada en ese momento.",
+        "date_set": "✅ Fecha de envío de la cápsula establecida para {date}. ¡Mantente atento!",
+        "support_author": "💖 Apoya al autor del bot:\n{url}\n¡Gracias por ayudar a que el proyecto crezca!",
+        "create_capsule_first": "📦 Primero, crea una cápsula con 'Crear cápsula' para agregar contenido.",
+        "text_added": "✅ ¡Mensaje de texto agregado a la cápsula!",
+        "photo_added": "✅ ¡Foto agregada a la cápsula!",
+        "video_added": "✅ ¡Video agregado a la cápsula!",
+        "audio_added": "✅ ¡Audio agregado a la cápsula!",
+        "document_added": "✅ ¡Documento agregado a la cápsula!",
+        "sticker_added": "✅ ¡Sticker agregado a la cápsula!",
+        "voice_added": "✅ ¡Mensaje de voz agregado a la cápsula!",
+        "not_registered": "⚠️ No estás registrado en el bot. Presiona /start para comenzar.",
+        "not_your_capsule": "❌ Esta cápsula no te pertenece. Solo puedes gestionar tus propias cápsulas.",
+        "today": "Hoy",
+        "tomorrow": "Mañana",
+        "content_limit_exceeded": "⚠️ Límite excedido: has agregado demasiados {type}.",
+    },
+    'fr': {
+        "start_message": "Bienvenue sur TimeCapsuleBot ! 📬\nJe vais vous aider à créer des capsules temporelles avec du texte, des photos, des vidéos et plus encore pour les envoyer à vous-même ou à vos amis dans le futur.\nUtilisez les boutons ci-dessous pour commencer !",
+        "help_message": "📋 *Liste des commandes de TimeCapsuleBot*\n\n"
+                        "/start - Lancez le bot et ouvrez le menu principal.\n"
+                        "/create_capsule - Créez une nouvelle capsule temporelle.\n*Exemple:* Ajoutez du texte, des photos ou des vidéos.\n"
+                        "/add_recipient - Ajoutez des destinataires à une capsule existante.\n*Exemple:* @Friend1 @Friend2\n"
+                        "/view_capsules - Affichez une liste de vos capsules avec leur statut.\n"
+                        "/send_capsule - Envoyez une capsule aux destinataires immédiatement.\n"
+                        "/delete_capsule - Supprimez une capsule si vous n'en avez plus besoin.\n"
+                        "/edit_capsule - Modifiez le contenu de la capsule (texte).\n"
+                        "/view_recipients - Voyez qui recevra votre capsule.\n"
+                        "/select_send_date - Définissez une date d'envoi pour la capsule.\n*Exemple:* Dans une semaine ou un jour spécifique.\n"
+                        "/support_author - Soutenez le développeur du bot.\n"
+                        "/change_language - Changez la langue de l'interface.\n\n",
+        "change_language": "🌍 Changer de langue",
+        "select_language": "Sélectionnez votre langue :",
+        "capsule_created": "✅ Capsule #{capsule_id} créée !\nAjoutez-y du texte, des photos ou des vidéos.",
+        "enter_recipients": "👥 Entrez les noms d'utilisateur Telegram des destinataires séparés par des espaces.\n*Exemple:* @Friend1 @Friend2\nIls recevront la capsule lorsque vous l'enverrez ou à la date programmée.",
+        "select_capsule": "📦 Entrez le numéro de la capsule pour l'action :",
+        "invalid_capsule_id": "❌ ID de capsule invalide. Vérifiez votre liste de capsules avec 'Voir les capsules'.",
+        "recipients_added": "✅ Destinataires ajoutés à la capsule #{capsule_id} !\nVous pouvez maintenant définir une date d'envoi ou l'envoyer immédiatement.",
+        "error_general": "⚠️ Quelque chose s'est mal passé. Réessayez ou contactez le support.",
+        "service_unavailable": "🛠 Le service est temporairement indisponible. Veuillez patienter et réessayer plus tard.",
+        "your_capsules": "📋 *Vos capsules temporelles :*\n",
+        "no_capsules": "📭 Vous n'avez pas encore de capsules. Créez votre première avec 'Créer une capsule' !",
+        "created_at": "Créé",
+        "status": "Statut",
+        "scheduled": "⏳ Programmé",
+        "draft": "✏️ Brouillon",
+        "enter_capsule_id_to_send": "📨 Entrez l'ID de la capsule à envoyer immédiatement (par exemple, #5) :",
+        "no_recipients": "❌ Cette capsule n'a pas de destinataires. Ajoutez-en avec 'Ajouter un destinataire'.",
+        "capsule_received": "🎉 Vous avez reçu une capsule temporelle de @{sender} !\nVoici son contenu :",
+        "capsule_sent": "📬 Capsule envoyée avec succès à @{recipient} !\nIls la verront maintenant.",
+        "recipient_not_registered": "⚠️ Le destinataire @{recipient} n'est pas enregistré avec le bot et ne recevra pas la capsule.",
+        "confirm_delete": "🗑 Êtes-vous sûr de vouloir supprimer cette capsule ? Cette action est irréversible.",
+        "capsule_deleted": "✅ Capsule #{capsule_id} supprimée.",
+        "delete_canceled": "❌ Suppression annulée. La capsule reste intacte.",
+        "enter_new_content": "✏️ Entrez le nouveau texte pour la capsule (l'ancien contenu sera remplacé) :",
+        "capsule_edited": "✅ Capsule #{capsule_id} mise à jour avec le nouveau contenu !",
+        "recipients_list": "👥 Destinataires de la capsule #{capsule_id} :\n{recipients}",
+        "no_recipients_for_capsule": "📭 Aucun destinataire trouvé pour la capsule #{capsule_id}.",
+        "choose_send_date": "📅 Quand envoyer la capsule ?\nChoisissez une option :",
+        "through_week": "Dans une semaine",
+        "through_month": "Dans un mois",
+        "select_date": "Sélectionner une date",
+        "date_selected": "📅 Vous avez sélectionné : {date}\nLa capsule sera envoyée à ce moment-là.",
+        "date_set": "✅ Date d'envoi de la capsule définie sur {date}. Restez à l'écoute !",
+        "support_author": "💖 Soutenez l'auteur du bot :\n{url}\nMerci de contribuer à la croissance du projet !",
+        "create_capsule_first": "📦 Créez d'abord une capsule avec 'Créer une capsule' pour ajouter du contenu.",
+        "text_added": "✅ Message texte ajouté à la capsule !",
+        "photo_added": "✅ Photo ajoutée à la capsule !",
+        "video_added": "✅ Vidéo ajoutée à la capsule !",
+        "audio_added": "✅ Audio ajouté à la capsule !",
+        "document_added": "✅ Document ajouté à la capsule !",
+        "sticker_added": "✅ Sticker ajouté à la capsule !",
+        "voice_added": "✅ Message vocal ajouté à la capsule !",
+        "not_registered": "⚠️ Vous n'êtes pas enregistré avec le bot. Appuyez sur /start pour commencer.",
+        "not_your_capsule": "❌ Cette capsule ne vous appartient pas. Vous ne pouvez gérer que vos propres capsules.",
+        "today": "Aujourd'hui",
+        "tomorrow": "Demain",
+        "content_limit_exceeded": "⚠️ Limite dépassée : vous avez ajouté trop de {type}.",
+    },
+    'de': {
+        "start_message": "Willkommen bei TimeCapsuleBot! 📬\nIch helfe Ihnen, Zeitkapseln mit Text, Fotos, Videos und mehr zu erstellen, die Sie sich selbst oder Freunden in der Zukunft senden können.\nVerwenden Sie die Schaltflächen unten, um loszulegen!",
+        "help_message": "📋 *TimeCapsuleBot-Befehlsliste*\n\n"
+                        "/start - Starten Sie den Bot und öffnen Sie das Hauptmenü.\n"
+                        "/create_capsule - Erstellen Sie eine neue Zeitkapsel.\n*Beispiel:* Fügen Sie Text, Fotos oder Videos hinzu.\n"
+                        "/add_recipient - Fügen Sie Empfänger zu einer vorhandenen Kapsel hinzu.\n*Beispiel:* @Friend1 @Friend2\n"
+                        "/view_capsules - Zeigen Sie eine Liste Ihrer Kapseln mit deren Status an.\n"
+                        "/send_capsule - Senden Sie eine Kapsel sofort an die Empfänger.\n"
+                        "/delete_capsule - Löschen Sie eine Kapsel, wenn Sie sie nicht mehr benötigen.\n"
+                        "/edit_capsule - Bearbeiten Sie den Inhalt der Kapsel (Text).\n"
+                        "/view_recipients - Sehen Sie, wer Ihre Kapsel erhält.\n"
+                        "/select_send_date - Legen Sie ein Sendedatum für die Kapsel fest.\n*Beispiel:* In einer Woche oder an einem bestimmten Tag.\n"
+                        "/support_author - Unterstützen Sie den Entwickler des Bots.\n"
+                        "/change_language - Ändern Sie die Sprache der Benutzeroberfläche.\n\n",
+        "change_language": "🌍 Sprache ändern",
+        "select_language": "Wählen Sie Ihre Sprache:",
+        "capsule_created": "✅ Kapsel #{capsule_id} erstellt!\nFügen Sie Text, Fotos oder Videos hinzu.",
+        "enter_recipients": "👥 Geben Sie die Telegram-Benutzernamen der Empfänger getrennt durch Leerzeichen ein.\n*Beispiel:* @Friend1 @Friend2\nSie erhalten die Kapsel, wenn Sie sie senden oder das geplante Datum erreicht ist.",
+        "select_capsule": "📦 Geben Sie die Kapselnummer für die Aktion ein:",
+        "invalid_capsule_id": "❌ Ungültige Kapsel-ID. Überprüfen Sie Ihre Kapselliste mit 'Kapseln anzeigen'.",
+        "recipients_added": "✅ Empfänger zur Kapsel #{capsule_id} hinzugefügt!\nSie können jetzt ein Sendedatum festlegen oder sie sofort senden.",
+        "error_general": "⚠️ Etwas ist schief gelaufen. Versuchen Sie es erneut oder kontaktieren Sie den Support.",
+        "service_unavailable": "🛠 Der Dienst ist vorübergehend nicht verfügbar. Bitte warten Sie und versuchen Sie es später erneut.",
+        "your_capsules": "📋 *Ihre Zeitkapseln:*\n",
+        "no_capsules": "📭 Sie haben noch keine Kapseln. Erstellen Sie Ihre erste mit 'Kapsel erstellen'!",
+        "created_at": "Erstellt",
+        "status": "Status",
+        "scheduled": "⏳ Geplant",
+        "draft": "✏️ Entwurf",
+        "enter_capsule_id_to_send": "📨 Geben Sie die Kapsel-ID zum sofortigen Senden ein (z. B. #5):",
+        "no_recipients": "❌ Diese Kapsel hat keine Empfänger. Fügen Sie welche mit 'Empfänger hinzufügen' hinzu.",
+        "capsule_received": "🎉 Sie haben eine Zeitkapsel von @{sender} erhalten!\nHier ist ihr Inhalt:",
+        "capsule_sent": "📬 Kapsel erfolgreich an @{recipient} gesendet!\nSie sehen sie jetzt.",
+        "recipient_not_registered": "⚠️ Der Empfänger @{recipient} ist nicht beim Bot registriert und erhält die Kapsel nicht.",
+        "confirm_delete": "🗑 Sind Sie sicher, dass Sie diese Kapsel löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
+        "capsule_deleted": "✅ Kapsel #{capsule_id} gelöscht.",
+        "delete_canceled": "❌ Löschen abgebrochen. Die Kapsel bleibt unversehrt.",
+        "enter_new_content": "✏️ Geben Sie den neuen Text für die Kapsel ein (der alte Inhalt wird ersetzt):",
+        "capsule_edited": "✅ Kapsel #{capsule_id} mit neuem Inhalt aktualisiert!",
+        "recipients_list": "👥 Empfänger der Kapsel #{capsule_id}:\n{recipients}",
+        "no_recipients_for_capsule": "📭 Keine Empfänger für Kapsel #{capsule_id} gefunden.",
+        "choose_send_date": "📅 Wann soll die Kapsel gesendet werden?\nWählen Sie eine Option:",
+        "through_week": "In einer Woche",
+        "through_month": "In einem Monat",
+        "select_date": "Datum auswählen",
+        "date_selected": "📅 Sie haben ausgewählt: {date}\nDie Kapsel wird zu diesem Zeitpunkt gesendet.",
+        "date_set": "✅ Sendedatum der Kapsel auf {date} festgelegt. Bleiben Sie dran!",
+        "support_author": "💖 Unterstützen Sie den Autor des Bots:\n{url}\nVielen Dank für Ihre Unterstützung beim Wachstum des Projekts!",
+        "create_capsule_first": "📦 Erstellen Sie zuerst eine Kapsel mit 'Kapsel erstellen', um Inhalte hinzuzufügen.",
+        "text_added": "✅ Textnachricht zur Kapsel hinzugefügt!",
+        "photo_added": "✅ Foto zur Kapsel hinzugefügt!",
+        "video_added": "✅ Video zur Kapsel hinzugefügt!",
+        "audio_added": "✅ Audio zur Kapsel hinzugefügt!",
+        "document_added": "✅ Dokument zur Kapsel hinzugefügt!",
+        "sticker_added": "✅ Sticker zur Kapsel hinzugefügt!",
+        "voice_added": "✅ Sprachnachricht zur Kapsel hinzugefügt!",
+        "not_registered": "⚠️ Sie sind nicht beim Bot registriert. Drücken Sie /start, um zu beginnen.",
+        "not_your_capsule": "❌ Diese Kapsel gehört Ihnen nicht. Sie können nur Ihre eigenen Kapseln verwalten.",
+        "today": "Heute",
+        "tomorrow": "Morgen",
+        "content_limit_exceeded": "⚠️ Limit überschritten: Sie haben zu viele {type} hinzugefügt.",
+    }
 }
 
 def t(key: str, **kwargs) -> str:
