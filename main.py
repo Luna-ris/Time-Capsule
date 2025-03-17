@@ -62,6 +62,7 @@ TRANSLATIONS = {
         "change_language": "Сменить язык",
         "select_language": "Выберите ваш язык:",
         "capsule_created": "Капсула #{capsule_id} создана успешно!",
+        "enter_recipients": "Введите получателей:",  # Новый ключ
         "enter_capsule_id_for_recipients": "Введите ID капсулы для добавления получателей:",
         "invalid_capsule_id": "Неверный ID капсулы. Пожалуйста, попробуйте снова.",
         "recipients_added": "Получатели добавлены в капсулу #{capsule_id}.",
@@ -114,6 +115,7 @@ TRANSLATIONS = {
         "change_language": "Change Language",
         "select_language": "Select your language:",
         "capsule_created": "Capsule #{capsule_id} created successfully!",
+        "enter_recipients": "Enter recipients:",  # Новый ключ
         "enter_capsule_id_for_recipients": "Enter the capsule ID to add recipients:",
         "invalid_capsule_id": "Invalid capsule ID. Please try again.",
         "recipients_added": "Recipients added to capsule #{capsule_id}.",
