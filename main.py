@@ -46,15 +46,6 @@ bot: Optional[Bot] = None
 # Состояния беседы
 CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE = range(8)
 
-# Ограничения контента
-MAX_TEXTS = 10
-MAX_PHOTOS = 5
-MAX_VIDEOS = 5
-MAX_AUDIOS = 5
-MAX_DOCUMENTS = 5
-MAX_STICKERS = 5
-MAX_VOICES = 5
-
 # Локализация
 LOCALE = 'ru'
 TRANSLATIONS = {
@@ -561,13 +552,10 @@ async def handle_text(update: Update, context: CallbackContext):
 async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
     """Обработчик шагов создания капсулы. Добавляет текст в капсулу."""
     capsule_content = context.user_data.get('capsule_content', {"text": []})
-    if len(capsule_content['text']) < MAX_TEXTS:
-        capsule_content['text'].append(text)
-        context.user_data['capsule_content'] = capsule_content
-        save_capsule_content(context, context.user_data['current_capsule'])
-        await update.message.reply_text(t('text_added'))
-    else:
-        await update.message.reply_text(t('content_limit_exceeded', type="текст"))
+    capsule_content['text'].append(text)
+    context.user_data['capsule_content'] = capsule_content
+    save_capsule_content(context, context.user_data['current_capsule'])
+    await update.message.reply_text(t('text_added'))
 
 async def handle_recipient(update: Update, context: CallbackContext):
     """Обработчик добавления получателей."""
@@ -646,15 +634,12 @@ async def handle_view_recipients_logic(update: Update, context: CallbackContext,
         logger.error(f"Ошибка при получении получателей: {e}")
         await update.message.reply_text(t('error_general'))
 
-async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str, max_limit: int):
+async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str):
     """Обработчик медиафайлов."""
     if not context.user_data.get('current_capsule'):
         await update.message.reply_text(t('create_capsule_first'))
         return
     capsule_content = context.user_data.get('capsule_content', {media_type: []})
-    if len(capsule_content[media_type]) >= max_limit:
-        await update.message.reply_text(t('content_limit_exceeded', type=media_type[:-1]))
-        return
     try:
         file_id = (await getattr(update.message, file_attr).get_file()).file_id
         capsule_content.setdefault(media_type, []).append(file_id)
@@ -667,22 +652,22 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         await update.message.reply_text(t('error_general'))
 
 async def handle_photo(update: Update, context: CallbackContext):
-    await handle_media(update, context, "photos", "photo[-1]", MAX_PHOTOS)
+    await handle_media(update, context, "photos", "photo[-1]")
 
 async def handle_video(update: Update, context: CallbackContext):
-    await handle_media(update, context, "videos", "video", MAX_VIDEOS)
+    await handle_media(update, context, "videos", "video")
 
 async def handle_audio(update: Update, context: CallbackContext):
-    await handle_media(update, context, "audios", "audio", MAX_AUDIOS)
+    await handle_media(update, context, "audios", "audio")
 
 async def handle_document(update: Update, context: CallbackContext):
-    await handle_media(update, context, "documents", "document", MAX_DOCUMENTS)
+    await handle_media(update, context, "documents", "document")
 
 async def handle_sticker(update: Update, context: CallbackContext):
-    await handle_media(update, context, "stickers", "sticker", MAX_STICKERS)
+    await handle_media(update, context, "stickers", "sticker")
 
 async def handle_voice(update: Update, context: CallbackContext):
-    await handle_media(update, context, "voices", "voice", MAX_VOICES)
+    await handle_media(update, context, "voices", "voice")
 
 # Вспомогательные функции
 async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -> bool:
