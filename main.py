@@ -634,6 +634,17 @@ async def handle_view_recipients_logic(update: Update, context: CallbackContext,
         logger.error(f"Ошибка при получении получателей: {e}")
         await update.message.reply_text(t('error_general'))
 
+async def handle_photo(update: Update, context: CallbackContext):
+    if not context.user_data.get('current_capsule'):
+        await update.message.reply_text(t('create_capsule_first'))
+        return
+    capsule_content = context.user_data.get('capsule_content', {"photos": []})
+    photo_file_id = (await update.message.photo[-1].get_file()).file_id
+    capsule_content.setdefault('photos', []).append(photo_file_id)
+    context.user_data['capsule_content'] = capsule_content
+    save_capsule_content(context, context.user_data['current_capsule'])
+    await update.message.reply_text(t('photo_added'))
+
 async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str):
     """Обработчик медиафайлов."""
     if not context.user_data.get('current_capsule'):
@@ -650,9 +661,6 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
     except Exception as e:
         logger.error(f"Ошибка при добавлении {media_type[:-1]}: {e}")
         await update.message.reply_text(t('error_general'))
-
-async def handle_photo(update: Update, context: CallbackContext):
-    await handle_media(update, context, "photos", "photo[-1]")
 
 async def handle_video(update: Update, context: CallbackContext):
     await handle_media(update, context, "videos", "video")
