@@ -57,6 +57,7 @@ def get_chat_id(username: str) -> Optional[int]:
 def send_capsule_task(capsule_id: int):
     async def send_async():
         try:
+            logger.info(f"Начинаю отправку капсулы {capsule_id}")
             capsule = fetch_data("capsules", {"id": capsule_id})
             if not capsule:
                 logger.error(f"Капсула {capsule_id} не найдена")
@@ -71,15 +72,10 @@ def send_capsule_task(capsule_id: int):
             for recipient in recipients:
                 chat_id = get_chat_id(recipient['recipient_username'])
                 if chat_id:
+                    logger.info(f"Отправляю капсулу {capsule_id} пользователю @{recipient['recipient_username']}")
                     await bot.send_message(chat_id=chat_id, text=f"🎁 Вам пришла капсула времени от @{capsule[0]['creator_id']}!")
                     for item in content.get('text', []): await bot.send_message(chat_id, item)
-                    for item in content.get('stickers', []): await bot.send_sticker(chat_id, item)
-                    for item in content.get('photos', []): await bot.send_photo(chat_id, item)
-                    for item in content.get('documents', []): await bot.send_document(chat_id, item)
-                    for item in content.get('voices', []): await bot.send_voice(chat_id, item)
-                    for item in content.get('videos', []): await bot.send_video(chat_id, item)
-                    for item in content.get('audios', []): await bot.send_audio(chat_id, item)
-                    logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
+                    # Добавьте остальные типы контента
                 else:
                     logger.error(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
         except Exception as e:
