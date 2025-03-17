@@ -79,8 +79,6 @@ TRANSLATIONS = {
         "status": "Статус",
         "scheduled": "Запланировано",
         "draft": "Черновик",
-        "sent": "Отправлено",
-        "deleted": "Удалено",
         "enter_capsule_id_to_send": "Введите ID капсулы для отправки:",
         "no_recipients": "Получатели для этой капсулы не найдены.",
         "capsule_received": "Вы получили капсулу от @{sender}!",
@@ -118,7 +116,7 @@ TRANSLATIONS = {
         "content_limit_exceeded": "Превышен лимит контента: макс. {max} элементов типа {type}."
     },
     'en': {
-        # Английские переводы остаются без изменений для краткости, можно добавить аналогично
+        # Английские переводы опущены для краткости
     }
 }
 
@@ -224,8 +222,6 @@ def create_capsule(creator_id: int, title: str, content: str, user_capsule_numbe
     data = {"creator_id": creator_id, "title": title, "content": encrypted_content, "user_capsule_number": user_capsule_number}
     if scheduled_at:
         data["scheduled_at"] = scheduled_at.astimezone(pytz.utc).isoformat()
-    data["is_sent"] = False  # Добавляем статус отправки
-    data["is_deleted"] = False  # Добавляем статус удаления
     response = post_data("capsules", data)
     return response[0]['id'] if response else -1
 
@@ -234,7 +230,7 @@ def add_recipient(capsule_id: int, recipient_username: str):
 
 def delete_capsule(capsule_id: int):
     delete_data("recipients", {"capsule_id": capsule_id})
-    update_data("capsules", {"id": capsule_id}, {"is_deleted": True})
+    delete_data("capsules", {"id": capsule_id})
 
 def edit_capsule(capsule_id: int, title: Optional[str] = None, content: Optional[str] = None, scheduled_at: Optional[datetime] = None):
     data = {}
@@ -326,10 +322,7 @@ async def view_capsules_command(update: Update, context: CallbackContext):
     try:
         capsules = get_user_capsules(update.message.from_user.id)
         if capsules:
-            response = []
-            for c in capsules:
-                status = t('deleted') if c['is_deleted'] else t('sent') if c['is_sent'] else t('scheduled') if c['scheduled_at'] else t('draft')
-                response.append(f"📦 #{c['id']} {c['title']}\n🕒 {t('created_at')}: {datetime.fromisoformat(c['created_at']).strftime('%d.%m.%Y %H:%M')}\n🔒 {t('status')}: {status}")
+            response = [f"📦 #{c['id']} {c['title']}\n🕒 {t('created_at')}: {datetime.fromisoformat(c['created_at']).strftime('%d.%m.%Y %H:%M')}\n🔒 {t('status')}: {t('scheduled') if c['scheduled_at'] else t('draft')}" for c in capsules]
             await update.message.reply_text(t('your_capsules') + "\n" + "\n".join(response), parse_mode="Markdown")
         else:
             await update.message.reply_text(t('no_capsules'))
@@ -534,9 +527,6 @@ async def handle_recipient(update: Update, context: CallbackContext):
 async def handle_send_capsule_logic(update: Update, context: CallbackContext, capsule_id: int, query):
     try:
         capsule = fetch_data("capsules", {"id": capsule_id})[0]
-        if capsule['is_sent']:
-            await query.edit_message_text("Эта капсула уже отправлена.")
-            return
         recipients = get_capsule_recipients(capsule_id)
         if not recipients:
             await query.edit_message_text(t('no_recipients'))
@@ -556,7 +546,6 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
                 await query.edit_message_text(t('capsule_sent', recipient=recipient['recipient_username']))
             else:
                 await query.edit_message_text(t('recipient_not_registered', recipient=recipient['recipient_username']))
-        update_data("capsules", {"id": capsule_id}, {"is_sent": True})
         context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при отправке капсулы: {e}")
@@ -662,7 +651,7 @@ async def post_init(application):
     capsules = fetch_data("capsules")
     now = datetime.now(pytz.utc)
     for capsule in capsules:
-        if capsule.get('scheduled_at') and not capsule['is_sent'] and not capsule['is_deleted']:
+        if capsule.get('scheduled_at'):
             scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
             if scheduled_at > now:
                 send_capsule_task.apply_async((capsule['id'],), eta=scheduled_at)
