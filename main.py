@@ -20,7 +20,7 @@ import pytz
 import nest_asyncio
 
 # Загрузка переменных окружения
-load_dotenv()
+# load_dotenv()
 
 # Настройка логирования
 logging.basicConfig(
