@@ -44,7 +44,7 @@ scheduler = AsyncIOScheduler(timezone=pytz.utc)
 bot: Optional[Bot] = None
 
 # Состояния беседы
-CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE, ENTERING_CUSTOM_DATE = range(9)
+CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, ADD_RECIPIENTS, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE, ENTERING_CUSTOM_DATE = range(9)
 
 # Локализация
 LOCALE = 'ru'
@@ -564,7 +564,7 @@ async def handle_custom_date_input(update: Update, context: CallbackContext, tex
         # Парсим введённую дату
         send_date = datetime.strptime(text, '%H:%M %d.%m.%Y').replace(tzinfo=pytz.utc)
         now = datetime.now(pytz.utc)
-        
+
         # Проверяем, что дата в будущем
         if send_date <= now:
             await update.message.reply_text(
@@ -572,7 +572,7 @@ async def handle_custom_date_input(update: Update, context: CallbackContext, tex
                 "Пример: 21:12 17.03.2025"
             )
             return
-        
+
         # Сохраняем дату в context
         context.user_data['send_date'] = send_date
         await update.message.reply_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
@@ -743,15 +743,25 @@ async def save_send_date(update: Update, context: CallbackContext):
         if not send_date or not capsule_id:
             await update.callback_query.edit_message_text(t('error_general'))
             return
-        
-        # Сначала выполняем все операции
+
+        # Сохраняем дату в базе данных
         edit_capsule(capsule_id, scheduled_at=send_date)
-        send_capsule_task.apply_async((capsule_id,), eta=send_date)
-        
-        # Только после успешного выполнения отправляем сообщение
+
+        # Планируем задачу через APScheduler
+        scheduler.add_job(
+            send_capsule_task,
+            'date',
+            run_date=send_date,
+            args=[capsule_id],
+            id=f"capsule_{capsule_id}",
+            timezone=pytz.utc
+        )
+        logger.info(f"Задача для капсулы #{capsule_id} запланирована на {send_date}")
+
+        # Подтверждаем пользователю
         await update.callback_query.edit_message_text(t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M')))
         context.user_data['state'] = "idle"
-        
+
     except ConnectionError as e:
         logger.error(f"Ошибка подключения к базе данных: {e}")
         await update.callback_query.edit_message_text(t('service_unavailable'))
@@ -766,17 +776,60 @@ async def post_init(application):
         if capsule.get('scheduled_at'):
             scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
             if scheduled_at > now:
-                send_capsule_task.apply_async((capsule['id'],), eta=scheduled_at)
+                scheduler.add_job(
+                    send_capsule_task,
+                    'date',
+                    run_date=scheduled_at,
+                    args=[capsule['id']],
+                    id=f"capsule_{capsule['id']}",
+                    timezone=pytz.utc
+                )
                 logger.info(f"Запланирована отправка капсулы #{capsule['id']} на {scheduled_at}")
 
 async def check_bot_permissions(context: CallbackContext):
     me = await context.bot.get_me()
     logger.info(f"Бот запущен как @{me.username}")
 
+# Функция отправки капсулы
+async def send_capsule_task(capsule_id):
+    capsule = fetch_data("capsules", {"id": capsule_id})
+    if not capsule:
+        logger.error(f"Капсула #{capsule_id} не найдена")
+        return
+    capsule = capsule[0]
+    recipients = get_capsule_recipients(capsule_id)
+    if not recipients:
+        logger.error(f"Нет получателей для капсулы #{capsule_id}")
+        return
+    content = json.loads(decrypt_data_aes(capsule['content'], ENCRYPTION_KEY_BYTES))
+    for recipient in recipients:
+        chat_id = get_chat_id(recipient['recipient_username'])
+        if chat_id:
+            await bot.send_message(chat_id=chat_id, text=t('capsule_received', sender=capsule['creator_id']))
+            for item in content.get('text', []):
+                await bot.send_message(chat_id, item)
+            for item in content.get('stickers', []):
+                await bot.send_sticker(chat_id, item)
+            for item in content.get('photos', []):
+                await bot.send_photo(chat_id, item)
+            for item in content.get('documents', []):
+                await bot.send_document(chat_id, item)
+            for item in content.get('voices', []):
+                await bot.send_voice(chat_id, item)
+            for item in content.get('videos', []):
+                await bot.send_video(chat_id, item)
+            for item in content.get('audios', []):
+                await bot.send_audio(chat_id, item)
+            logger.info(f"Капсула #{capsule_id} отправлена пользователю {recipient['recipient_username']}")
+        else:
+            logger.error(f"Пользователь {recipient['recipient_username']} не зарегистрирован")
+
 # Главная функция
 async def main():
+    global bot
     start_services()
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    bot = application.bot
     await check_bot_permissions(application)
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
@@ -807,6 +860,3 @@ async def main():
     await application.start()
     await application.updater.start_polling()
     await asyncio.Event().wait()
-
-if __name__ == "__main__":
-    asyncio.run(main())
