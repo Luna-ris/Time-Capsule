@@ -26,7 +26,7 @@ ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def fetch_data(table: str, query: dict = {}):
+def fetch_data(table: str, query: dict = {}) -> list:
     response = supabase.table(table).select("*")
     for key, value in query.items():
         response = response.eq(key, value)
@@ -41,10 +41,10 @@ def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     unpadder = padding.PKCS7(128).unpadder()
     return unpadder.update(decrypted) + unpadder.finalize().decode('utf-8')
 
-def get_capsule_recipients(capsule_id: int):
+def get_capsule_recipients(capsule_id: int) -> list:
     return fetch_data("recipients", {"capsule_id": capsule_id})
 
-def get_chat_id(username: str):
+def get_chat_id(username: str) -> Optional[int]:
     response = fetch_data("users", {"username": username})
     return response[0]['chat_id'] if response else None
 
