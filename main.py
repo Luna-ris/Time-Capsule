@@ -559,13 +559,13 @@ async def handle_text(update: Update, context: CallbackContext):
         await update.message.reply_text(t('create_capsule_first'))
 
 async def handle_custom_date_input(update: Update, context: CallbackContext, text: str):
-    """Обработчик ввода пользовательской даты в формате ЧЧ:ММ ДД.ММ.ГГГГ."""
     try:
-        # Парсим введённую дату
-        send_date = datetime.strptime(text, '%H:%M %d.%m.%Y').replace(tzinfo=pytz.utc)
-        now = datetime.now(pytz.utc)
+        local_tz = pytz.timezone('Europe/Moscow')  # Замените на ваш часовой пояс
+        naive_date = datetime.strptime(text, '%H:%M %d.%m.%Y')
+        local_date = local_tz.localize(naive_date)
+        send_date = local_date.astimezone(pytz.utc)  # Преобразуем в UTC
         
-        # Проверяем, что дата в будущем
+        now = datetime.now(pytz.utc)
         if send_date <= now:
             await update.message.reply_text(
                 "❌ Ошибка: Укажите дату и время в будущем.\n"
@@ -573,9 +573,8 @@ async def handle_custom_date_input(update: Update, context: CallbackContext, tex
             )
             return
         
-        # Сохраняем дату в context
         context.user_data['send_date'] = send_date
-        await update.message.reply_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
+        await update.message.reply_text(t('date_selected', date=local_date.strftime('%d.%m.%Y %H:%M')))
         await save_send_date(update, context)
         context.user_data['state'] = "idle"
     except ValueError:
