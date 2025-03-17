@@ -11,7 +11,7 @@ from supabase import create_client, Client
 import os
 from dotenv import load_dotenv
 import asyncio
-from typing import Optional, List  # Добавлен импорт Optional и List
+from typing import Optional, List
 
 # Настройка логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -24,6 +24,10 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
+
+if len(ENCRYPTION_KEY_BYTES) != 32:
+    logger.error("Длина ключа шифрования должна быть 32 байта для AES-256")
+    raise ValueError("Неверная длина ключа шифрования")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -51,26 +55,23 @@ def get_chat_id(username: str) -> Optional[int]:
 
 @celery_app.task
 def send_capsule_task(capsule_id: int):
-    try:
-        capsule = fetch_data("capsules", {"id": capsule_id})
-        if not capsule:
-            logger.error(f"Капсула {capsule_id} не найдена")
-            return
-        content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
-        recipients = get_capsule_recipients(capsule_id)
-        if not recipients:
-            logger.error(f"Нет получателей для капсулы {capsule_id}")
-            return
+    async def send_async():
+        try:
+            capsule = fetch_data("capsules", {"id": capsule_id})
+            if not capsule:
+                logger.error(f"Капсула {capsule_id} не найдена")
+                return
+            content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
+            recipients = get_capsule_recipients(capsule_id)
+            if not recipients:
+                logger.error(f"Нет получателей для капсулы {capsule_id}")
+                return
 
-        # Создаем асинхронный бот для отправки сообщений
-        bot = Bot(token=TELEGRAM_TOKEN)
-        loop = asyncio.get_event_loop()
-
-        async def send_messages():
+            bot = Bot(token=TELEGRAM_TOKEN)
             for recipient in recipients:
                 chat_id = get_chat_id(recipient['recipient_username'])
                 if chat_id:
-                    await bot.send_message(chat_id=chat_id, text=f"🎁 Вам пришла капсула времени от @{recipient['recipient_username']}!")
+                    await bot.send_message(chat_id=chat_id, text=f"🎁 Вам пришла капсула времени от @{capsule[0]['creator_id']}!")
                     for item in content.get('text', []): await bot.send_message(chat_id, item)
                     for item in content.get('stickers', []): await bot.send_sticker(chat_id, item)
                     for item in content.get('photos', []): await bot.send_photo(chat_id, item)
@@ -78,10 +79,10 @@ def send_capsule_task(capsule_id: int):
                     for item in content.get('voices', []): await bot.send_voice(chat_id, item)
                     for item in content.get('videos', []): await bot.send_video(chat_id, item)
                     for item in content.get('audios', []): await bot.send_audio(chat_id, item)
+                    logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
                 else:
                     logger.error(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
+        except Exception as e:
+            logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
-        # Запускаем асинхронную отправку
-        loop.run_until_complete(send_messages())
-    except Exception as e:
-        logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
+    asyncio.run(send_async())
