@@ -4,7 +4,7 @@ import subprocess
 import time
 import os
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup, Bot
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, CallbackContext, Application
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler, CallbackContext
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
@@ -12,7 +12,7 @@ from cryptography.hazmat.backends import default_backend
 import json
 from datetime import datetime, timedelta
 from supabase import create_client, Client
-from typing import Optional, List  # Добавлен импорт Optional и List
+from typing import Optional, List
 from dotenv import load_dotenv
 from tasks import send_capsule_task
 import i18n
@@ -43,6 +43,10 @@ if not all([SUPABASE_URL, SUPABASE_KEY, TELEGRAM_TOKEN, ENCRYPTION_KEY]):
     sys.exit(1)
 
 ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
+if len(ENCRYPTION_KEY_BYTES) != 32:
+    logger.error("Длина ключа шифрования должна быть 32 байта для AES-256")
+    sys.exit(1)
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 scheduler = AsyncIOScheduler(timezone=pytz.utc)
 bot: Optional[Bot] = None
@@ -59,16 +63,18 @@ i18n.set('fallback', 'en')
 if not os.path.exists(locale_dir):
     logger.error(f"Папка locales не найдена по пути: {locale_dir}")
     sys.exit(1)
-if not os.path.exists(os.path.join(locale_dir, 'ru.json')):
-    logger.error("Файл ru.json не найден в папке locales")
-    sys.exit(1)
-
-# Дополнительная отладка для проверки загрузки локалей
-logger.info(f"Путь к локалям: {locale_dir}")
-logger.info(f"Список файлов в locales: {os.listdir(locale_dir)}")
-logger.info(f"Текущая локаль: {i18n.get('locale')}")
-logger.info(f"Тест перевода start_message: {i18n.t('start_message')}")
-logger.info(f"Тест перевода capsule_created: {i18n.t('capsule_created', capsule_id=1)}")
+for lang in ['ru', 'en']:
+    lang_file = os.path.join(locale_dir, f'{lang}.json')
+    if not os.path.exists(lang_file):
+        logger.error(f"Файл {lang}.json не найден в папке locales")
+        sys.exit(1)
+    with open(lang_file, 'r', encoding='utf-8') as f:
+        try:
+            json.load(f)
+            logger.info(f"Файл {lang}.json успешно загружен")
+        except json.JSONDecodeError as e:
+            logger.error(f"Ошибка в синтаксисе {lang}.json: {e}")
+            sys.exit(1)
 
 # Функция для запуска внешних процессов
 def start_process(command, name):
@@ -82,16 +88,18 @@ def start_process(command, name):
         else:
             error = process.stderr.read().decode()
             logger.error(f"Ошибка запуска {name}: {error}")
-            logger.error(f"Убедитесь, что {name} установлен и переменные окружения (например, REDIS_URL) настроены правильно.")
             return False
     except Exception as e:
         logger.error(f"Не удалось запустить {name}: {e}")
         return False
 
 def start_services():
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        logger.error("Переменная REDIS_URL не задана. Celery не сможет работать.")
+        sys.exit(1)
     celery_command = "celery -A celery_config.app worker --loglevel=info --pool=solo"
-    celery_success = start_process(celery_command, "Celery")
-    if not celery_success:
+    if not start_process(celery_command, "Celery"):
         logger.error("Не удалось запустить Celery. Завершение работы.")
         sys.exit(1)
 
@@ -295,19 +303,19 @@ async def handle_language_selection(update: Update, context: CallbackContext):
 async def handle_date_buttons(update: Update, context: CallbackContext):
     query = update.callback_query
     if query.data == 'week':
-        send_date = datetime.now() + timedelta(weeks=1)
+        send_date = datetime.now(pytz.utc) + timedelta(weeks=1)
     elif query.data == 'month':
-        send_date = datetime.now() + timedelta(days=30)
+        send_date = datetime.now(pytz.utc) + timedelta(days=30)
     else:
         await handle_calendar(update, context)
         return
     context.user_data['send_date'] = send_date
-    await query.edit_message_text(i18n.t('date_selected', date=send_date))
+    await query.edit_message_text(i18n.t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
     await save_send_date(update, context)
 
 async def handle_calendar(update: Update, context: CallbackContext):
     query = update.callback_query
-    current_date = datetime.now()
+    current_date = datetime.now(pytz.utc)
     keyboard = [[InlineKeyboardButton(f"{(current_date + timedelta(days=i)).day} ({i18n.t('today') if i == 0 else i18n.t('tomorrow') if i == 1 else f'{i} days'})", callback_data=f"day_{(current_date + timedelta(days=i)).day}")] for i in range(8)]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(i18n.t('select_date'), reply_markup=reply_markup)
@@ -315,9 +323,9 @@ async def handle_calendar(update: Update, context: CallbackContext):
 async def handle_calendar_selection(update: Update, context: CallbackContext):
     query = update.callback_query
     selected_day = int(query.data.split('_')[1])
-    send_date = datetime.now().replace(day=selected_day)
+    send_date = datetime.now(pytz.utc).replace(day=selected_day, hour=0, minute=0, second=0, microsecond=0)
     context.user_data['send_date'] = send_date
-    await query.edit_message_text(i18n.t('date_selected', date=send_date))
+    await query.edit_message_text(i18n.t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
     await save_send_date(update, context)
 
 # Обработчики текстовых сообщений и состояний
@@ -421,6 +429,8 @@ async def handle_send_capsule(update: Update, context: CallbackContext):
                 else:
                     await update.message.reply_text(i18n.t('recipient_not_registered', recipient=recipient['recipient_username']))
             context.user_data['state'] = "idle"
+    except ValueError:
+        await update.message.reply_text(i18n.t('invalid_capsule_id'))
     except Exception as e:
         logger.error(f"Ошибка при отправке капсулы: {e}")
         await update.message.reply_text(i18n.t('error_general'))
@@ -433,6 +443,8 @@ async def handle_delete_capsule(update: Update, context: CallbackContext):
                 return
             context.user_data['deleting_capsule_id'] = capsule_id
             await update.message.reply_text(i18n.t('confirm_delete'), reply_markup=ReplyKeyboardMarkup([["Да"], ["Нет"]], resize_keyboard=True))
+    except ValueError:
+        await update.message.reply_text(i18n.t('invalid_capsule_id'))
     except Exception as e:
         logger.error(f"Ошибка при удалении капсулы: {e}")
         await update.message.reply_text(i18n.t('error_general'))
@@ -455,6 +467,8 @@ async def handle_edit_capsule(update: Update, context: CallbackContext):
             context.user_data['editing_capsule_id'] = capsule_id
             await update.message.reply_text(i18n.t('enter_new_content'))
             context.user_data['state'] = "editing_capsule_content"
+    except ValueError:
+        await update.message.reply_text(i18n.t('invalid_capsule_id'))
     except Exception as e:
         logger.error(f"Ошибка при редактировании капсулы: {e}")
         await update.message.reply_text(i18n.t('error_general'))
@@ -463,12 +477,12 @@ async def handle_edit_capsule_content(update: Update, context: CallbackContext):
     try:
         if context.user_data.get('state') == "editing_capsule_content":
             capsule_id = context.user_data.get('editing_capsule_id')
-            content = json.dumps(context.user_data.get('capsule_content', {"text": [update.message.text]}))
-            edit_capsule(capsule_id, title="Без названия", content=content)
+            content = json.dumps({"text": [update.message.text]}, ensure_ascii=False)
+            edit_capsule(capsule_id, content=content)
             await update.message.reply_text(i18n.t('capsule_edited', capsule_id=capsule_id))
             context.user_data['state'] = "idle"
     except Exception as e:
-        logger.error(f"Ошибка при редактировании капсулы: {e}")
+        logger.error(f"Ошибка при редактировании содержимого капсулы: {e}")
         await update.message.reply_text(i18n.t('error_general'))
 
 async def handle_view_recipients(update: Update, context: CallbackContext):
@@ -520,7 +534,7 @@ async def handle_select_send_date(update: Update, context: CallbackContext):
             send_date_utc = pytz.utc.localize(send_date)
             edit_capsule(capsule_id, scheduled_at=send_date_utc)
             send_capsule_task.apply_async((capsule_id,), eta=send_date_utc)
-            await update.message.reply_text(i18n.t('date_set', date=send_date_utc))
+            await update.message.reply_text(i18n.t('date_set', date=send_date_utc.strftime('%d.%m.%Y %H:%M')))
             context.user_data['state'] = "idle"
     except ValueError:
         await update.message.reply_text("Пожалуйста, введите дату в формате ДД.ММ.ГГГГ ЧЧ:ММ")
@@ -622,7 +636,7 @@ async def save_send_date(update: Update, context: CallbackContext):
             return
         edit_capsule(capsule_id, scheduled_at=send_date)
         send_capsule_task.apply_async((capsule_id,), eta=send_date)
-        await update.message.reply_text(i18n.t('date_set', date=send_date))
+        await update.message.reply_text(i18n.t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M')))
         context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при установке даты: {e}")
@@ -635,7 +649,8 @@ async def post_init(application):
         if capsule.get('scheduled_at'):
             scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
             if scheduled_at > now:
-                scheduler.add_job(send_capsule_task.delay, 'date', run_date=scheduled_at, args=[capsule['id']], id=f"capsule_{capsule['id']}", timezone=pytz.utc)
+                send_capsule_task.apply_async((capsule['id'],), eta=scheduled_at)
+                logger.info(f"Запланирована отправка капсулы #{capsule['id']} на {scheduled_at}")
 
 async def check_bot_permissions(context: CallbackContext):
     me = await context.bot.get_me()
@@ -673,9 +688,9 @@ async def main():
     application.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
     application.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
-    scheduler.start()
     await application.initialize()
     await post_init(application)
+    scheduler.start()
     await application.start()
     await application.updater.start_polling()
     await asyncio.Event().wait()
