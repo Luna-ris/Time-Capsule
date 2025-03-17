@@ -7,3 +7,4 @@ app.conf.task_serializer = 'json'
 app.conf.result_serializer = 'json'
 app.conf.accept_content = ['json']
 app.conf.timezone = 'UTC'
+app.conf.broker_connection_retry_on_startup = True
