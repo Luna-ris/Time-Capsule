@@ -1243,7 +1243,7 @@ async def main():
     application.add_handler(CommandHandler("select_send_date", select_send_date))
     application.add_handler(CommandHandler("change_language", change_language))
 
-    application.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r'^(ru|en)$'))
+    application.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r'^(ru|en|es|fr|de)$'))
     application.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r'^(week|month|calendar)$'))
     application.add_handler(CallbackQueryHandler(handle_calendar_selection, pattern=r'^day_\d+$'))
     application.add_handler(CallbackQueryHandler(
