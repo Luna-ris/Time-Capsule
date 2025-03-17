@@ -81,7 +81,7 @@ TRANSLATIONS = {
         "select_language": "Выберите ваш язык:",
         "capsule_created": "Капсула #{capsule_id} создана успешно!",
         "enter_recipients": "Введите получателей (через пробел):",
-        "select_capsule": "Выберите капсулу, введя её номер:",
+        "select_capsule": "Введите номер капсулы для действия.",
         "invalid_capsule_id": "Неверный ID капсулы. Пожалуйста, попробуйте снова.",
         "recipients_added": "Получатели добавлены в капсулу #{capsule_id}.",
         "error_general": "Произошла ошибка. Пожалуйста, попробуйте позже.",
@@ -123,9 +123,9 @@ TRANSLATIONS = {
         "not_your_capsule": "Эта капсула вам не принадлежит.",
         "today": "Сегодня",
         "tomorrow": "Завтра",
-        "create_step_1": "Шаг 1: Добавьте текст или медиа в капсулу.",
-        "create_step_2": "Шаг 2: Укажите получателей (например, @username).",
-        "create_step_3": "Шаг 3: Установите дату отправки или завершите создание.",
+        "create_step_1": "",
+        "create_step_2": "",
+        "create_step_3": "",
         "content_limit_exceeded": "Превышен лимит контента: макс. {max} элементов типа {type}."
     },
     'en': {
@@ -148,7 +148,7 @@ TRANSLATIONS = {
         "select_language": "Select your language:",
         "capsule_created": "Capsule #{capsule_id} created successfully!",
         "enter_recipients": "Enter recipients (separated by spaces):",
-        "select_capsule": "Select a capsule by entering its number:",
+        "select_capsule": "Enter the capsule number for the action.",
         "invalid_capsule_id": "Invalid capsule ID. Please try again.",
         "recipients_added": "Recipients added to capsule #{capsule_id}.",
         "error_general": "An error occurred. Please try again later.",
@@ -190,9 +190,9 @@ TRANSLATIONS = {
         "not_your_capsule": "This capsule does not belong to you.",
         "today": "Today",
         "tomorrow": "Tomorrow",
-        "create_step_1": "Step 1: Add text or media to the capsule.",
-        "create_step_2": "Step 2: Specify recipients (e.g., @username).",
-        "create_step_3": "Step 3: Set send date or finish creation.",
+        "create_step_1": "",
+        "create_step_2": "",
+        "create_step_3": "",
         "content_limit_exceeded": "Content limit exceeded: max {max} items of type {type}."
     }
 }
@@ -388,30 +388,22 @@ async def create_capsule_command(update: Update, context: CallbackContext):
         context.user_data['capsule_content'] = json.loads(initial_content)
         context.user_data['state'] = CREATING_CAPSULE
         await update.message.reply_text(t('capsule_created', capsule_id=capsule_id))
-        await update.message.reply_text(t('create_step_1'))
     except Exception as e:
         logger.error(f"Ошибка при создании капсулы: {e}")
         await update.message.reply_text(t('error_general'))
 
 async def show_capsule_selection(update: Update, context: CallbackContext, action: str):
     """
-    Показывает список капсул для выбора.
-    Используется для добавления получателей, отправки, удаления и редактирования капсул.
+    Запрашивает номер капсулы для выполнения действия.
     """
-    capsules = get_user_capsules(update.message.from_user.id)
-    if not capsules:
-        await update.message.reply_text(t('no_capsules'))
-        return False
-    capsule_ids = [f"#{c['id']} {c['title']}" for c in capsules]
-    capsule_ids_str = "\n".join(capsule_ids)
-    await update.message.reply_text(t('select_capsule') + "\n" + capsule_ids_str)
+    await update.message.reply_text(t('select_capsule'))
     context.user_data['action'] = action
     return True
 
 async def add_recipient_command(update: Update, context: CallbackContext):
     """
     Обработчик команды /add_recipient.
-    Показывает список капсул для выбора и добавления получателей.
+    Запрашивает номер капсулы для добавления получателей.
     """
     if await show_capsule_selection(update, context, "add_recipient"):
         context.user_data['state'] = SELECTING_CAPSULE_FOR_RECIPIENTS
@@ -435,7 +427,7 @@ async def view_capsules_command(update: Update, context: CallbackContext):
 async def send_capsule_command(update: Update, context: CallbackContext):
     """
     Обработчик команды /send_capsule.
-    Показывает список капсул для выбора и отправки.
+    Запрашивает номер капсулы для отправки.
     """
     if await show_capsule_selection(update, context, "send_capsule"):
         context.user_data['state'] = "sending_capsule"
@@ -443,7 +435,7 @@ async def send_capsule_command(update: Update, context: CallbackContext):
 async def delete_capsule_command(update: Update, context: CallbackContext):
     """
     Обработчик команды /delete_capsule.
-    Показывает список капсул для выбора и удаления.
+    Запрашивает номер капсулы для удаления.
     """
     if await show_capsule_selection(update, context, "delete_capsule"):
         context.user_data['state'] = "deleting_capsule"
@@ -451,7 +443,7 @@ async def delete_capsule_command(update: Update, context: CallbackContext):
 async def edit_capsule_command(update: Update, context: CallbackContext):
     """
     Обработчик команды /edit_capsule.
-    Показывает список капсул для выбора и редактирования.
+    Запрашивает номер капсулы для редактирования.
     """
     if await show_capsule_selection(update, context, "edit_capsule"):
         context.user_data['state'] = "editing_capsule"
@@ -459,7 +451,7 @@ async def edit_capsule_command(update: Update, context: CallbackContext):
 async def view_recipients_command(update: Update, context: CallbackContext):
     """
     Обработчик команды /view_recipients.
-    Показывает список капсул для выбора и просмотра получателей.
+    Запрашивает номер капсулы для просмотра получателей.
     """
     if await show_capsule_selection(update, context, "view_recipients"):
         context.user_data['state'] = "viewing_recipients"
@@ -467,7 +459,7 @@ async def view_recipients_command(update: Update, context: CallbackContext):
 async def select_send_date(update: Update, context: CallbackContext):
     """
     Обработчик команды /select_send_date.
-    Показывает список капсул для выбора и установки даты отправки.
+    Запрашивает номер капсулы для установки даты отправки.
     """
     if await show_capsule_selection(update, context, "select_send_date"):
         context.user_data['state'] = SELECTING_CAPSULE
@@ -518,10 +510,11 @@ async def handle_language_selection(update: Update, context: CallbackContext):
 async def handle_capsule_selection(update: Update, context: CallbackContext):
     """
     Обработчик выбора капсулы.
-    Выполняет действия в зависимости от выбранного действия (добавить получателя, отправить, удалить, редактировать, просмотреть получателей, установить дату отправки).
+    Выполняет действия в зависимости от выбранного действия.
     """
+    text = update.message.text.strip()
     try:
-        capsule_id = int(update.message.text.strip())
+        capsule_id = int(text.replace('#', ''))
         context.user_data['selected_capsule_id'] = capsule_id
     except ValueError:
         await update.message.reply_text(t('invalid_capsule_id'))
@@ -611,68 +604,48 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext):
 async def handle_text(update: Update, context: CallbackContext):
     """
     Обработчик текстовых сообщений.
-    Выполняет действия в зависимости от текущего состояния (добавление получателей, редактирование содержимого, создание капсулы).
+    Выполняет действия в зависимости от текущего состояния.
     """
     text = update.message.text.strip()
-    actions = {
-        "📦 Создать капсулу": create_capsule_command,
-        "📂 Просмотреть капсулы": view_capsules_command,
-        "👤 Добавить получателя": add_recipient_command,
-        "📨 Отправить капсулу": send_capsule_command,
-        "🗑 Удалить капсулу": delete_capsule_command,
-        "✏️ Редактировать капсулу": edit_capsule_command,
-        "👥 Просмотреть получателей": view_recipients_command,
-        "❓ Помощь": help_command,
-        "📅 Установить дату отправки": select_send_date,
-        "💸 Поддержать автора": support_author,
-        "🌍 Сменить язык": change_language
-    }
-    if text in actions:
-        await actions[text](update, context)
-    elif context.user_data.get('state') == "adding_recipient":
-        await handle_recipient(update, context)
-    elif context.user_data.get('state') == "editing_capsule_content":
-        await handle_edit_capsule_content(update, context)
-    elif context.user_data.get('state') == CREATING_CAPSULE:
+    state = context.user_data.get('state', 'idle')
+
+    if state == CREATING_CAPSULE:
         await handle_create_capsule_steps(update, context, text)
-    elif text and context.user_data.get('current_capsule'):
-        capsule_content = context.user_data.get('capsule_content', {"text": []})
-        if len(capsule_content['text']) >= MAX_TEXTS:
-            await update.message.reply_text(t('content_limit_exceeded', max=MAX_TEXTS, type="текст"))
-            return
+    elif state == "adding_recipient":
+        await handle_recipient(update, context)
+    elif state == "editing_capsule_content":
+        await handle_edit_capsule_content(update, context)
+    elif state == SELECTING_CAPSULE_FOR_RECIPIENTS:
+        await handle_capsule_selection(update, context)
+    else:
+        actions = {
+            "📦 Создать капсулу": create_capsule_command,
+            "📂 Просмотреть капсулы": view_capsules_command,
+            "👤 Добавить получателя": add_recipient_command,
+            "📨 Отправить капсулу": send_capsule_command,
+            "🗑 Удалить капсулу": delete_capsule_command,
+            "✏️ Редактировать капсулу": edit_capsule_command,
+            "👥 Просмотреть получателей": view_recipients_command,
+            "❓ Помощь": help_command,
+            "📅 Установить дату отправки": select_send_date,
+            "💸 Поддержать автора": support_author,
+            "🌍 Сменить язык": change_language
+        }
+        if text in actions:
+            await actions[text](update, context)
+        else:
+            await update.message.reply_text(t('create_capsule_first'))
+
+async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
+    capsule_content = context.user_data.get('capsule_content', {"text": []})
+    if len(capsule_content['text']) < MAX_TEXTS:
         capsule_content['text'].append(text)
         context.user_data['capsule_content'] = capsule_content
         save_capsule_content(context, context.user_data['current_capsule'])
         await update.message.reply_text(t('text_added'))
     else:
-        await update.message.reply_text(t('create_capsule_first'))
-
-async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
-    if "Шаг 1" in context.user_data.get('last_message', ''):
-        capsule_content = context.user_data.get('capsule_content', {"text": []})
-        if len(capsule_content['text']) >= MAX_TEXTS:
-            await update.message.reply_text(t('content_limit_exceeded', max=MAX_TEXTS, type="текст"))
-            return
-        capsule_content['text'].append(text)
-        context.user_data['capsule_content'] = capsule_content
-        save_capsule_content(context, context.user_data['current_capsule'])
-        await update.message.reply_text(t('text_added'))
-        await update.message.reply_text(t('create_step_2'))
-        context.user_data['last_message'] = t('create_step_2')
-    elif "Шаг 2" in context.user_data.get('last_message', ''):
-        usernames = set(text.strip().split())
-        capsule_id = context.user_data.get('current_capsule')
-        for username in usernames:
-            add_recipient(capsule_id, username.lstrip('@'))
-        await update.message.reply_text(t('recipients_added', capsule_id=capsule_id))
-        await update.message.reply_text(t('create_step_3'))
-        context.user_data['last_message'] = t('create_step_3')
-    elif "Шаг 3" in context.user_data.get('last_message', ''):
-        if text.lower() in ["завершить", "finish"]:
-            context.user_data['state'] = "idle"
-            await update.message.reply_text("Создание капсулы завершено!")
-        else:
-            await select_send_date(update, context)
+        await update.message.reply_text(t('content_limit_exceeded', max=MAX_TEXTS, type="текст"))
+        return
 
 async def handle_recipient(update: Update, context: CallbackContext):
     try:
