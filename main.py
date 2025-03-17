@@ -116,25 +116,25 @@ def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     return unpadded.decode('utf-8')
 
 # Функции работы с Supabase
-def fetch_data(table: str, query: dict = {}):
+def fetch_data(table: str, query: dict = {}) -> list:
     response = supabase.table(table).select("*")
     for key, value in query.items():
         response = response.eq(key, value)
     return response.execute().data
 
-def post_data(table: str, data: dict):
+def post_data(table: str, data: dict) -> list:
     return supabase.table(table).insert(data).execute().data
 
-def update_data(table: str, query: dict, data: dict):
+def update_data(table: str, query: dict, data: dict) -> list:
     query_builder = supabase.table(table).update(data)
     for key, value in query.items():
         query_builder = query_builder.eq(key, value)
     return query_builder.execute().data
 
-def delete_data(table: str, query: dict):
+def delete_data(table: str, query: dict) -> list:
     return supabase.table(table).delete().eq(next(iter(query)), query[next(iter(query))]).execute().data
 
-def get_chat_id(username: str):
+def get_chat_id(username: str) -> Optional[int]:
     response = fetch_data("users", {"username": username})
     return response[0]['chat_id'] if response else None
 
@@ -145,7 +145,7 @@ def add_user(username: str, telegram_id: int, chat_id: int):
 def generate_unique_capsule_number(creator_id: int) -> int:
     return len(fetch_data("capsules", {"creator_id": creator_id})) + 1
 
-def create_capsule(creator_id: int, title: str, content: str, user_capsule_number: int, scheduled_at: datetime = None):
+def create_capsule(creator_id: int, title: str, content: str, user_capsule_number: int, scheduled_at: Optional[datetime] = None) -> int:
     encrypted_content = encrypt_data_aes(content, ENCRYPTION_KEY_BYTES)
     data = {"creator_id": creator_id, "title": title, "content": encrypted_content, "user_capsule_number": user_capsule_number}
     if scheduled_at:
@@ -170,11 +170,11 @@ def edit_capsule(capsule_id: int, title: Optional[str] = None, content: Optional
     if data:
         update_data("capsules", {"id": capsule_id}, data)
 
-def get_user_capsules(telegram_id: int):
+def get_user_capsules(telegram_id: int) -> list:
     user = fetch_data("users", {"telegram_id": telegram_id})
     return fetch_data("capsules", {"creator_id": user[0]['id']}) if user else []
 
-def get_capsule_recipients(capsule_id: int):
+def get_capsule_recipients(capsule_id: int) -> list:
     return fetch_data("recipients", {"capsule_id": capsule_id})
 
 # Обработчики команд
