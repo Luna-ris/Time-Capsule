@@ -801,8 +801,11 @@ async def support_author(update: Update, context: CallbackContext):
 async def change_language(update: Update, context: CallbackContext):
     """Обработчик команды /change_language."""
     keyboard = [
-        [InlineKeyboardButton("Русский", callback_data="ru")],
-        [InlineKeyboardButton("English", callback_data="en")]
+        [InlineKeyboardButton("Русский", callback_data="ru"),
+         InlineKeyboardButton("English", callback_data="en")],
+        [InlineKeyboardButton("Español", callback_data="es"),
+         InlineKeyboardButton("Français", callback_data="fr")],
+        [InlineKeyboardButton("Deutsch", callback_data="de")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(t('select_language'), reply_markup=reply_markup)
@@ -815,7 +818,14 @@ async def handle_language_selection(update: Update, context: CallbackContext):
     query = update.callback_query
     lang = query.data
     LOCALE = lang
-    new_lang = "Русский" if lang == 'ru' else "English"
+    lang_names = {
+        'ru': "Русский",
+        'en': "English",
+        'es': "Español",
+        'fr': "Français",
+        'de': "Deutsch"
+    }
+    new_lang = lang_names.get(lang, "Unknown")
     await query.edit_message_text(f"Язык изменен на {new_lang}.")
     keyboard = [
         ["📦 Создать капсулу", "📂 Просмотреть капсулы"],
