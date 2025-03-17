@@ -25,7 +25,6 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 from supabase import create_client, Client
 
-
 # Локализация
 LOCALE = 'ru'
 TRANSLATIONS = {
@@ -119,6 +118,17 @@ TRANSLATIONS = {
         "today": "Сегодня",
         "tomorrow": "Завтра",
         "content_limit_exceeded": "⚠️ Превышен лимит: вы добавили слишком много {type}.",
+        "create_capsule_btn": "📦 Создать капсулу",
+        "view_capsules_btn": "📂 Просмотреть капсулы",
+        "add_recipient_btn": "👤 Добавить получателя",
+        "send_capsule_btn": "📨 Отправить капсулу",
+        "delete_capsule_btn": "🗑 Удалить капсулу",
+        "edit_capsule_btn": "✏️ Редактировать капсулу",
+        "view_recipients_btn": "👥 Просмотреть получателей",
+        "help_btn": "❓ Помощь",
+        "select_send_date_btn": "📅 Установить дату отправки",
+        "support_author_btn": "💸 Поддержать автора",
+        "change_language_btn": "🌍 Сменить язык",
     },
     'en': {
         "start_message": (
@@ -200,6 +210,17 @@ TRANSLATIONS = {
         "today": "Today",
         "tomorrow": "Tomorrow",
         "content_limit_exceeded": "⚠️ Limit exceeded: you’ve added too many {type}.",
+        "create_capsule_btn": "📦 Create Capsule",
+        "view_capsules_btn": "📂 View Capsules",
+        "add_recipient_btn": "👤 Add Recipient",
+        "send_capsule_btn": "📨 Send Capsule",
+        "delete_capsule_btn": "🗑 Delete Capsule",
+        "edit_capsule_btn": "✏️ Edit Capsule",
+        "view_recipients_btn": "👥 View Recipients",
+        "help_btn": "❓ Help",
+        "select_send_date_btn": "📅 Set Send Date",
+        "support_author_btn": "💸 Support Author",
+        "change_language_btn": "🌍 Change Language",
     },
     'es': {
         "start_message": (
@@ -284,6 +305,17 @@ TRANSLATIONS = {
         "today": "Hoy",
         "tomorrow": "Mañana",
         "content_limit_exceeded": "⚠️ Límite excedido: has agregado demasiados {type}.",
+        "create_capsule_btn": "📦 Crear Cápsula",
+        "view_capsules_btn": "📂 Ver Cápsulas",
+        "add_recipient_btn": "👤 Agregar Destinatario",
+        "send_capsule_btn": "📨 Enviar Cápsula",
+        "delete_capsule_btn": "🗑 Eliminar Cápsula",
+        "edit_capsule_btn": "✏️ Editar Cápsula",
+        "view_recipients_btn": "👥 Ver Destinatarios",
+        "help_btn": "❓ Ayuda",
+        "select_send_date_btn": "📅 Establecer Fecha de Envío",
+        "support_author_btn": "💸 Apoyar al Autor",
+        "change_language_btn": "🌍 Cambiar Idioma",
     },
     'fr': {
         "start_message": (
@@ -367,6 +399,17 @@ TRANSLATIONS = {
         "today": "Aujourd'hui",
         "tomorrow": "Demain",
         "content_limit_exceeded": "⚠️ Limite dépassée : vous avez ajouté trop de {type}.",
+        "create_capsule_btn": "📦 Créer une Capsule",
+        "view_capsules_btn": "📂 Voir les Capsules",
+        "add_recipient_btn": "👤 Ajouter un Destinataire",
+        "send_capsule_btn": "📨 Envoyer la Capsule",
+        "delete_capsule_btn": "🗑 Supprimer la Capsule",
+        "edit_capsule_btn": "✏️ Modifier la Capsule",
+        "view_recipients_btn": "👥 Voir les Destinataires",
+        "help_btn": "❓ Aide",
+        "select_send_date_btn": "📅 Définir la Date d'Envoi",
+        "support_author_btn": "💸 Soutenir l'Auteur",
+        "change_language_btn": "🌍 Changer de Langue",
     },
     'de': {
         "start_message": (
@@ -385,8 +428,7 @@ TRANSLATIONS = {
             "/delete_capsule - Löschen Sie eine Kapsel, wenn Sie sie nicht mehr benötigen.\n"
             "/edit_capsule - Bearbeiten Sie den Inhalt der Kapsel (Text).\n"
             "/view_recipients - Sehen Sie, wer Ihre Kapsel erhält.\n"
-            "/select_send_date - Legen Sie ein Sendedatum für die Kapsel fest.\n"
-            "*Beispiel:* In einer Woche oder an einem bestimmten Tag.\n"
+            "/select_send_date - Legen Sie ein Sendedatum für die Kapsel fest.\n*Beispiel:* In einer Woche oder an einem bestimmten Tag.\n"
             "/support_author - Unterstützen Sie den Entwickler des Bots.\n"
             "/change_language - Ändern Sie die Sprache der Benutzeroberfläche.\n\n"
         ),
@@ -455,15 +497,24 @@ TRANSLATIONS = {
         "today": "Heute",
         "tomorrow": "Morgen",
         "content_limit_exceeded": "⚠️ Limit überschritten: Sie haben zu viele {type} hinzugefügt.",
+        "create_capsule_btn": "📦 Kapsel Erstellen",
+        "view_capsules_btn": "📂 Kapseln Anzeigen",
+        "add_recipient_btn": "👤 Empfänger Hinzufügen",
+        "send_capsule_btn": "📨 Kapsel Senden",
+        "delete_capsule_btn": "🗑 Kapsel Löschen",
+        "edit_capsule_btn": "✏️ Kapsel Bearbeiten",
+        "view_recipients_btn": "👥 Empfänger Anzeigen",
+        "help_btn": "❓ Hilfe",
+        "select_send_date_btn": "📅 Sendedatum Festlegen",
+        "support_author_btn": "💸 Autor Unterstützen",
+        "change_language_btn": "🌍 Sprache Ändern",
     }
 }
-
 
 def t(key: str, **kwargs) -> str:
     """Получение перевода по ключу с учетом текущей локали."""
     translation = TRANSLATIONS.get(LOCALE, TRANSLATIONS['en']).get(key, key)
     return translation.format(**kwargs) if kwargs else translation
-
 
 # Функции запуска сервисов
 def start_process(command: str, name: str) -> bool:
@@ -488,7 +539,6 @@ def start_process(command: str, name: str) -> bool:
         logger.error(f"Не удалось запустить {name}: {e}")
         return False
 
-
 def start_services():
     """Запуск необходимых сервисов."""
     redis_url = os.getenv("REDIS_URL")
@@ -499,7 +549,6 @@ def start_services():
     if not start_process(celery_command, "Celery"):
         logger.error("Не удалось запустить Celery.")
         sys.exit(1)
-
 
 # Шифрование и дешифрование
 def encrypt_data_aes(data: str, key: bytes) -> str:
@@ -512,7 +561,6 @@ def encrypt_data_aes(data: str, key: bytes) -> str:
     encrypted = encryptor.update(padded_data) + encryptor.finalize()
     return (iv + encrypted).hex()
 
-
 def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     """Дешифрование данных с помощью AES."""
     data = bytes.fromhex(encrypted_hex)
@@ -523,7 +571,6 @@ def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     unpadder = padding.PKCS7(128).unpadder()
     unpadded = unpadder.update(decrypted) + unpadder.finalize()
     return unpadded.decode('utf-8')
-
 
 # Работа с Supabase
 def fetch_data(table: str, query: dict = {}) -> list:
@@ -537,7 +584,6 @@ def fetch_data(table: str, query: dict = {}) -> list:
         logger.error(f"Ошибка Supabase: {e}")
         return []
 
-
 def post_data(table: str, data: dict) -> list:
     """Добавление данных в Supabase."""
     try:
@@ -545,7 +591,6 @@ def post_data(table: str, data: dict) -> list:
     except Exception as e:
         logger.error(f"Ошибка записи в Supabase: {e}")
         return []
-
 
 def update_data(table: str, query: dict, data: dict) -> list:
     """Обновление данных в Supabase."""
@@ -557,7 +602,6 @@ def update_data(table: str, query: dict, data: dict) -> list:
     except Exception as e:
         logger.error(f"Ошибка обновления в Supabase: {e}")
         return []
-
 
 def delete_data(table: str, query: dict) -> list:
     """Удаление данных из Supabase."""
@@ -573,12 +617,10 @@ def delete_data(table: str, query: dict) -> list:
         logger.error(f"Ошибка удаления в Supabase: {e}")
         return []
 
-
 def get_chat_id(username: str) -> Optional[int]:
     """Получение chat_id по имени пользователя."""
     response = fetch_data("users", {"username": username})
     return response[0]['chat_id'] if response else None
-
 
 def add_user(username: str, telegram_id: int, chat_id: int):
     """Добавление пользователя в базу данных."""
@@ -589,11 +631,9 @@ def add_user(username: str, telegram_id: int, chat_id: int):
             "chat_id": chat_id
         })
 
-
 def generate_unique_capsule_number(creator_id: int) -> int:
     """Генерация уникального номера капсулы для пользователя."""
     return len(fetch_data("capsules", {"creator_id": creator_id})) + 1
-
 
 def create_capsule(
     creator_id: int,
@@ -615,7 +655,6 @@ def create_capsule(
     response = post_data("capsules", data)
     return response[0]['id'] if response else -1
 
-
 def add_recipient(capsule_id: int, recipient_username: str):
     """Добавление получателя к капсуле."""
     post_data("recipients", {
@@ -623,12 +662,10 @@ def add_recipient(capsule_id: int, recipient_username: str):
         "recipient_username": recipient_username
     })
 
-
 def delete_capsule(capsule_id: int):
     """Удаление капсулы и связанных данных."""
     delete_data("recipients", {"capsule_id": capsule_id})
     delete_data("capsules", {"id": capsule_id})
-
 
 def edit_capsule(
     capsule_id: int,
@@ -647,17 +684,14 @@ def edit_capsule(
     if data:
         update_data("capsules", {"id": capsule_id}, data)
 
-
 def get_user_capsules(telegram_id: int) -> list:
     """Получение списка капсул пользователя."""
     user = fetch_data("users", {"telegram_id": telegram_id})
     return fetch_data("capsules", {"creator_id": user[0]['id']}) if user else []
 
-
 def get_capsule_recipients(capsule_id: int) -> list:
     """Получение списка получателей капсулы."""
     return fetch_data("recipients", {"capsule_id": capsule_id})
-
 
 # Обработчики команд
 async def start(update: Update, context: CallbackContext):
@@ -665,30 +699,28 @@ async def start(update: Update, context: CallbackContext):
     user = update.message.from_user
     add_user(user.username or str(user.id), user.id, update.message.chat_id)
     keyboard = [
-        ["📦 Создать капсулу", "📂 Просмотреть капсулы"],
-        ["👤 Добавить получателя", "📨 Отправить капсулу"],
-        ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
-        ["👥 Просмотреть получателей", "❓ Помощь"],
-        ["📅 Установить дату отправки", "💸 Поддержать автора"],
-        ["🌍 Сменить язык"]
+        [t("create_capsule_btn"), t("view_capsules_btn")],
+        [t("add_recipient_btn"), t("send_capsule_btn")],
+        [t("delete_capsule_btn"), t("edit_capsule_btn")],
+        [t("view_recipients_btn"), t("help_btn")],
+        [t("select_send_date_btn"), t("support_author_btn")],
+        [t("change_language_btn")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(t('start_message'), reply_markup=reply_markup)
 
-
 async def help_command(update: Update, context: CallbackContext):
     """Обработчик команды /help."""
     keyboard = [
-        ["📦 Создать капсулу", "📂 Просмотреть капсулы"],
-        ["👤 Добавить получателя", "📨 Отправить капсулу"],
-        ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
-        ["👥 Просмотреть получателей", "❓ Помощь"],
-        ["📅 Установить дату отправки", "💸 Поддержать автора"],
-        ["🌍 Сменить язык"]
+        [t("create_capsule_btn"), t("view_capsules_btn")],
+        [t("add_recipient_btn"), t("send_capsule_btn")],
+        [t("delete_capsule_btn"), t("edit_capsule_btn")],
+        [t("view_recipients_btn"), t("help_btn")],
+        [t("select_send_date_btn"), t("support_author_btn")],
+        [t("change_language_btn")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(t('help_message'), reply_markup=reply_markup)
-
 
 async def create_capsule_command(update: Update, context: CallbackContext):
     """Обработчик команды /create_capsule."""
@@ -726,19 +758,16 @@ async def create_capsule_command(update: Update, context: CallbackContext):
         logger.error(f"Ошибка при создании капсулы: {e}")
         await update.message.reply_text(t('error_general'))
 
-
 async def show_capsule_selection(update: Update, context: CallbackContext, action: str) -> bool:
     """Запрашивает номер капсулы для выполнения действия."""
     await update.message.reply_text(t('select_capsule'))
     context.user_data['action'] = action
     return True
 
-
 async def add_recipient_command(update: Update, context: CallbackContext):
     """Обработчик команды /add_recipient."""
     if await show_capsule_selection(update, context, "add_recipient"):
         context.user_data['state'] = SELECTING_CAPSULE_FOR_RECIPIENTS
-
 
 async def view_capsules_command(update: Update, context: CallbackContext):
     """Обработчик команды /view_capsules."""
@@ -761,42 +790,35 @@ async def view_capsules_command(update: Update, context: CallbackContext):
         logger.error(f"Ошибка при получении капсул: {e}")
         await update.message.reply_text(t('error_general'))
 
-
 async def send_capsule_command(update: Update, context: CallbackContext):
     """Обработчик команды /send_capsule."""
     if await show_capsule_selection(update, context, "send_capsule"):
         context.user_data['state'] = "sending_capsule"
-
 
 async def delete_capsule_command(update: Update, context: CallbackContext):
     """Обработчик команды /delete_capsule."""
     if await show_capsule_selection(update, context, "delete_capsule"):
         context.user_data['state'] = "deleting_capsule"
 
-
 async def edit_capsule_command(update: Update, context: CallbackContext):
     """Обработчик команды /edit_capsule."""
     if await show_capsule_selection(update, context, "edit_capsule"):
         context.user_data['state'] = "editing_capsule"
-
 
 async def view_recipients_command(update: Update, context: CallbackContext):
     """Обработчик команды /view_recipients."""
     if await show_capsule_selection(update, context, "view_recipients"):
         context.user_data['state'] = "viewing_recipients"
 
-
 async def select_send_date(update: Update, context: CallbackContext):
     """Обработчик команды /select_send_date."""
     if await show_capsule_selection(update, context, "select_send_date"):
         context.user_data['state'] = SELECTING_CAPSULE
 
-
 async def support_author(update: Update, context: CallbackContext):
     """Обработчик команды /support_author."""
     DONATION_URL = "https://www.donationalerts.com/r/lunarisqqq"
     await update.message.reply_text(t('support_author', url=DONATION_URL))
-
 
 async def change_language(update: Update, context: CallbackContext):
     """Обработчик команды /change_language."""
@@ -809,7 +831,6 @@ async def change_language(update: Update, context: CallbackContext):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(t('select_language'), reply_markup=reply_markup)
-
 
 # Обработчики callback-запросов
 async def handle_language_selection(update: Update, context: CallbackContext):
@@ -828,12 +849,12 @@ async def handle_language_selection(update: Update, context: CallbackContext):
     new_lang = lang_names.get(lang, "Unknown")
     await query.edit_message_text(f"Язык изменен на {new_lang}.")
     keyboard = [
-        ["📦 Создать капсулу", "📂 Просмотреть капсулы"],
-        ["👤 Добавить получателя", "📨 Отправить капсулу"],
-        ["🗑 Удалить капсулу", "✏️ Редактировать капсулу"],
-        ["👥 Просмотреть получателей", "❓ Помощь"],
-        ["📅 Установить дату отправки", "💸 Поддержать автора"],
-        ["🌍 Сменить язык"]
+        [t("create_capsule_btn"), t("view_capsules_btn")],
+        [t("add_recipient_btn"), t("send_capsule_btn")],
+        [t("delete_capsule_btn"), t("edit_capsule_btn")],
+        [t("view_recipients_btn"), t("help_btn")],
+        [t("select_send_date_btn"), t("support_author_btn")],
+        [t("change_language_btn")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await context.bot.send_message(
@@ -841,7 +862,6 @@ async def handle_language_selection(update: Update, context: CallbackContext):
         text=t('start_message'),
         reply_markup=reply_markup
     )
-
 
 async def handle_capsule_selection(update: Update, context: CallbackContext):
     """Обработчик выбора капсулы."""
@@ -883,7 +903,6 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
         await update.message.reply_text(t('choose_send_date'), reply_markup=reply_markup)
         context.user_data['state'] = "selecting_send_date"
 
-
 async def handle_date_buttons(update: Update, context: CallbackContext):
     """Обработчик выбора даты отправки."""
     query = update.callback_query
@@ -904,7 +923,6 @@ async def handle_date_buttons(update: Update, context: CallbackContext):
         )
         context.user_data['state'] = "entering_custom_date"
 
-
 async def handle_calendar_selection(update: Update, context: CallbackContext):
     """Обработчик выбора даты из календаря (устаревшая функция)."""
     query = update.callback_query
@@ -913,7 +931,6 @@ async def handle_calendar_selection(update: Update, context: CallbackContext):
     context.user_data['send_date'] = send_date
     await query.edit_message_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
     await save_send_date(update, context)
-
 
 async def handle_delete_confirmation(update: Update, context: CallbackContext):
     """Обработчик подтверждения удаления капсулы."""
@@ -926,23 +943,22 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext):
         await query.edit_message_text(t('delete_canceled'))
     context.user_data['state'] = "idle"
 
-
 async def handle_text(update: Update, context: CallbackContext):
     """Обработчик текстовых сообщений."""
     text = update.message.text.strip()
     state = context.user_data.get('state', 'idle')
     actions = {
-        "📦 Создать капсулу": create_capsule_command,
-        "📂 Просмотреть капсулы": view_capsules_command,
-        "👤 Добавить получателя": add_recipient_command,
-        "📨 Отправить капсулу": send_capsule_command,
-        "🗑 Удалить капсулу": delete_capsule_command,
-        "✏️ Редактировать капсулу": edit_capsule_command,
-        "👥 Просмотреть получателей": view_recipients_command,
-        "❓ Помощь": help_command,
-        "📅 Установить дату отправки": select_send_date,
-        "💸 Поддержать автора": support_author,
-        "🌍 Сменить язык": change_language
+        t("create_capsule_btn"): create_capsule_command,
+        t("view_capsules_btn"): view_capsules_command,
+        t("add_recipient_btn"): add_recipient_command,
+        t("send_capsule_btn"): send_capsule_command,
+        t("delete_capsule_btn"): delete_capsule_command,
+        t("edit_capsule_btn"): edit_capsule_command,
+        t("view_recipients_btn"): view_recipients_command,
+        t("help_btn"): help_command,
+        t("select_send_date_btn"): select_send_date,
+        t("support_author_btn"): support_author,
+        t("change_language_btn"): change_language
     }
     if text in actions:
         await actions[text](update, context)
@@ -965,7 +981,6 @@ async def handle_text(update: Update, context: CallbackContext):
         await handle_capsule_selection(update, context)
     else:
         await update.message.reply_text(t('create_capsule_first'))
-
 
 async def handle_custom_date_input(update: Update, context: CallbackContext, text: str):
     """Обработчик ввода пользовательской даты."""
@@ -993,7 +1008,6 @@ async def handle_custom_date_input(update: Update, context: CallbackContext, tex
             "Пример: 21:12 17.03.2025"
         )
 
-
 async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
     """Обработчик шагов создания капсулы."""
     capsule_content = context.user_data.get('capsule_content', {"text": []})
@@ -1001,7 +1015,6 @@ async def handle_create_capsule_steps(update: Update, context: CallbackContext, 
     context.user_data['capsule_content'] = capsule_content
     save_capsule_content(context, context.user_data['current_capsule'])
     await update.message.reply_text(t('text_added'))
-
 
 async def handle_recipient(update: Update, context: CallbackContext):
     """Обработчик добавления получателей."""
@@ -1015,7 +1028,6 @@ async def handle_recipient(update: Update, context: CallbackContext):
     except Exception as e:
         logger.error(f"Ошибка при добавлении получателя: {e}")
         await update.message.reply_text(t('error_general'))
-
 
 async def handle_send_capsule_logic(update: Update, context: CallbackContext, capsule_id: int):
     """Логика отправки капсулы."""
@@ -1058,7 +1070,6 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
         logger.error(f"Ошибка при отправке капсулы: {e}")
         await update.message.reply_text(t('service_unavailable'))
 
-
 async def handle_edit_capsule_content(update: Update, context: CallbackContext):
     """Обработчик редактирования содержимого капсулы."""
     try:
@@ -1070,7 +1081,6 @@ async def handle_edit_capsule_content(update: Update, context: CallbackContext):
     except Exception as e:
         logger.error(f"Ошибка при редактировании содержимого капсулы: {e}")
         await update.message.reply_text(t('error_general'))
-
 
 async def handle_view_recipients_logic(update: Update, context: CallbackContext, capsule_id: int):
     """Логика просмотра получателей капсулы."""
@@ -1086,7 +1096,6 @@ async def handle_view_recipients_logic(update: Update, context: CallbackContext,
         logger.error(f"Ошибка при получении получателей: {e}")
         await update.message.reply_text(t('error_general'))
 
-
 async def handle_photo(update: Update, context: CallbackContext):
     """Обработчик добавления фото в капсулу."""
     if not context.user_data.get('current_capsule'):
@@ -1098,7 +1107,6 @@ async def handle_photo(update: Update, context: CallbackContext):
     context.user_data['capsule_content'] = capsule_content
     save_capsule_content(context, context.user_data['current_capsule'])
     await update.message.reply_text(t('photo_added'))
-
 
 async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str):
     """Обработчик медиафайлов."""
@@ -1117,31 +1125,25 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         logger.error(f"Ошибка при добавлении {media_type[:-1]}: {e}")
         await update.message.reply_text(t('error_general'))
 
-
 async def handle_video(update: Update, context: CallbackContext):
     """Обработчик добавления видео."""
     await handle_media(update, context, "videos", "video")
-
 
 async def handle_audio(update: Update, context: CallbackContext):
     """Обработчик добавления аудио."""
     await handle_media(update, context, "audios", "audio")
 
-
 async def handle_document(update: Update, context: CallbackContext):
     """Обработчик добавления документа."""
     await handle_media(update, context, "documents", "document")
-
 
 async def handle_sticker(update: Update, context: CallbackContext):
     """Обработчик добавления стикера."""
     await handle_media(update, context, "stickers", "sticker")
 
-
 async def handle_voice(update: Update, context: CallbackContext):
     """Обработчик добавления голосового сообщения."""
     await handle_media(update, context, "voices", "voice")
-
 
 # Вспомогательные функции
 async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -> bool:
@@ -1162,14 +1164,12 @@ async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -
         return False
     return True
 
-
 def save_capsule_content(context: CallbackContext, capsule_id: int):
     """Сохранение содержимого капсулы."""
     content = context.user_data.get('capsule_content', {})
     json_str = json.dumps(content, ensure_ascii=False)
     encrypted = encrypt_data_aes(json_str, ENCRYPTION_KEY_BYTES)
     update_data("capsules", {"id": capsule_id}, {"content": encrypted})
-
 
 async def save_send_date(update: Update, context: CallbackContext):
     """Сохранение даты отправки капсулы."""
@@ -1190,7 +1190,6 @@ async def save_send_date(update: Update, context: CallbackContext):
     except Exception as e:
         logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
         await update.callback_query.edit_message_text(t('error_general'))
-
 
 async def post_init(application):
     """Инициализация задач после запуска бота."""
@@ -1215,12 +1214,10 @@ async def post_init(application):
     except Exception as e:
         logger.error(f"Не удалось инициализировать задачи: {e}")
 
-
 async def check_bot_permissions(context: CallbackContext):
     """Проверка прав бота."""
     me = await context.bot.get_me()
     logger.info(f"Бот запущен как @{me.username}")
-
 
 # Главная функция
 async def main():
@@ -1264,7 +1261,6 @@ async def main():
     await application.start()
     await application.updater.start_polling()
     await asyncio.Event().wait()
-
 
 if __name__ == "__main__":
     # Настройка логирования
