@@ -1,3 +1,4 @@
+from celery_config import app as celery_app
 from telegram import Bot
 import json
 import logging
@@ -52,7 +53,8 @@ def get_chat_id(username: str) -> Optional[int]:
     response = fetch_data("users", {"username": username})
     return response[0]['chat_id'] if response else None
 
-async def send_capsule_task(capsule_id: int):
+@celery_app.task
+def send_capsule_task(capsule_id: int):
     async def send_async():
         try:
             capsule = fetch_data("capsules", {"id": capsule_id})
@@ -83,4 +85,4 @@ async def send_capsule_task(capsule_id: int):
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
-    await send_async()
+    asyncio.run(send_async())
