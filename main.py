@@ -50,7 +50,7 @@ TRANSLATIONS = {
         "start_message": "Добро пожаловать в TimeCapsuleBot! 📬\nЯ помогу вам создавать капсулы времени с текстом, фото, видео и другим контентом, чтобы отправить их себе или друзьям в будущем.\nИспользуйте кнопки ниже, чтобы начать!",
         "help_message": "📋 *Список команд TimeCapsuleBot*\n\n"
                         "/start - Запустить бота и открыть главное меню.\n"
-                        "/create_capsule - Создать новую капсулу времени.\n*Пример:* Добавьте текст, фото или видео, укажите получателей и дату отправки.\n"
+                        "/create_capsule - Создать новую капсулу времени.\n"
                         "/add_recipient - Добавить получателей в существующую капсулу.\n*Пример:* @Friend1 @Friend2\n"
                         "/view_capsules - Посмотреть список ваших капсул с их статусом.\n"
                         "/send_capsule - Немедленно отправить капсулу получателям.\n"
@@ -112,7 +112,7 @@ TRANSLATIONS = {
         "start_message": "Welcome to TimeCapsuleBot! 📬\nI’ll help you create time capsules with text, photos, videos, and more to send to yourself or friends in the future.\nUse the buttons below to get started!",
         "help_message": "📋 *TimeCapsuleBot Command List*\n\n"
                         "/start - Launch the bot and open the main menu.\n"
-                        "/create_capsule - Create a new time capsule.\n*Example:* Add text, photos, or videos, set recipients and a send date.\n"
+                        "/create_capsule - Create a new time capsule.\n*Example:* Add text, photos, or videos.\n"
                         "/add_recipient - Add recipients to an existing capsule.\n*Example:* @Friend1 @Friend2\n"
                         "/view_capsules - View a list of your capsules with their status.\n"
                         "/send_capsule - Send a capsule to recipients immediately.\n"
@@ -121,8 +121,7 @@ TRANSLATIONS = {
                         "/view_recipients - See who will receive your capsule.\n"
                         "/select_send_date - Set a send date for the capsule.\n*Example:* In a week or a specific day.\n"
                         "/support_author - Support the bot’s developer.\n"
-                        "/change_language - Change the interface language.\n\n"
-                        "💡 Tip: Create a capsule and experiment with media!",
+                        "/change_language - Change the interface language.\n\n",
         "change_language": "🌍 Change Language",
         "select_language": "Select your language:",
         "capsule_created": "✅ Capsule #{capsule_id} created!\nAdd text, photos, or videos to it.",
