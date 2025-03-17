@@ -710,7 +710,6 @@ async def handle_view_recipients_logic(update: Update, context: CallbackContext,
         logger.error(f"Ошибка при получении получателей: {e}")
         await update.message.reply_text(t('error_general'))
 
-# Обработчики медиа
 async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str, max_limit: int):
     if not context.user_data.get('current_capsule'):
         await update.message.reply_text(t('create_capsule_first'))
@@ -719,11 +718,16 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
     if len(capsule_content[media_type]) >= max_limit:
         await update.message.reply_text(t('content_limit_exceeded', max=max_limit, type=media_type[:-1]))
         return
-    file_id = (await getattr(update.message, file_attr).get_file()).file_id
-    capsule_content.setdefault(media_type, []).append(file_id)
-    context.user_data['capsule_content'] = capsule_content
-    save_capsule_content(context, context.user_data['current_capsule'])
-    await update.message.reply_text(t(f'{media_type[:-1]}_added'))
+    try:
+        file_id = (await getattr(update.message, file_attr).get_file()).file_id
+        capsule_content.setdefault(media_type, []).append(file_id)
+        context.user_data['capsule_content'] = capsule_content
+        save_capsule_content(context, context.user_data['current_capsule'])
+        await update.message.reply_text(t(f'{media_type[:-1]}_added'))
+        logger.info(f"Добавлен {media_type[:-1]} в капсулу #{context.user_data['current_capsule']}")
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении {media_type[:-1]}: {e}")
+        await update.message.reply_text(t('error_general'))
 
 async def handle_photo(update: Update, context: CallbackContext):
     await handle_media(update, context, "photos", "photo[-1]", MAX_PHOTOS)
