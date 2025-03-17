@@ -44,7 +44,7 @@ scheduler = AsyncIOScheduler(timezone=pytz.utc)
 bot: Optional[Bot] = None
 
 # Состояния беседы
-CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE = range(8)
+CAPSULE_TITLE, CAPSULE_CONTENT, SCHEDULE_TIME, ADD_RECIPIENT, SELECTING_SEND_DATE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS, CREATING_CAPSULE, ENTERING_CUSTOM_DATE = range(9)
 
 # Локализация
 LOCALE = 'ru'
@@ -478,21 +478,29 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
         context.user_data['state'] = "selecting_send_date"
 
 async def handle_date_buttons(update: Update, context: CallbackContext):
-    """Обработчик выбора даты отправки. Устанавливает дату отправки на неделю, месяц или позволяет выбрать дату из календаря."""
+    """Обработчик выбора даты отправки. Устанавливает дату отправки на неделю, месяц или позволяет ввести свою дату."""
     query = update.callback_query
     if query.data == 'week':
         send_date = datetime.now(pytz.utc) + timedelta(weeks=1)
+        context.user_data['send_date'] = send_date
+        await query.edit_message_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
+        await save_send_date(update, context)
     elif query.data == 'month':
         send_date = datetime.now(pytz.utc) + timedelta(days=30)
-    else:
-        await handle_calendar(update, context)
-        return
-    context.user_data['send_date'] = send_date
-    await query.edit_message_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
-    await save_send_date(update, context)
+        context.user_data['send_date'] = send_date
+        await query.edit_message_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
+        await save_send_date(update, context)
+    elif query.data == 'calendar':
+        # Запрашиваем у пользователя дату в текстовом формате
+        await query.edit_message_text(
+            "📅 Пожалуйста, введите дату и время отправки в формате ЧЧ:ММ ДД.ММ.ГГГГ.\n"
+            "Пример: 21:12 17.03.2025\n"
+            "Комментарий: Укажите время в 24-часовом формате и дату в будущем."
+        )
+        context.user_data['state'] = "entering_custom_date"
 
 async def handle_calendar(update: Update, context: CallbackContext):
-    """Обработчик выбора даты из календаря. Показывает кнопки с датами для выбора."""
+    """Обработчик выбора даты из календаря. Показывает кнопки с датами для выбора (устаревшая функция, теперь используется ввод текста)."""
     query = update.callback_query
     current_date = datetime.now(pytz.utc)
     keyboard = [[InlineKeyboardButton(f"{(current_date + timedelta(days=i)).day} ({t('today') if i == 0 else t('tomorrow') if i == 1 else f'{i} days'})", callback_data=f"day_{(current_date + timedelta(days=i)).day}")] for i in range(8)]
@@ -500,7 +508,7 @@ async def handle_calendar(update: Update, context: CallbackContext):
     await query.edit_message_text(t('select_date'), reply_markup=reply_markup)
 
 async def handle_calendar_selection(update: Update, context: CallbackContext):
-    """Обработчик выбора даты из календаря. Устанавливает выбранную дату для отправки капсулы."""
+    """Обработчик выбора даты из календаря. Устанавливает выбранную дату для отправки капсулы (устаревшая функция)."""
     query = update.callback_query
     selected_day = int(query.data.split('_')[1])
     send_date = datetime.now(pytz.utc).replace(day=selected_day, hour=0, minute=0, second=0, microsecond=0)
@@ -544,10 +552,38 @@ async def handle_text(update: Update, context: CallbackContext):
         await handle_recipient(update, context)
     elif state == "editing_capsule_content":
         await handle_edit_capsule_content(update, context)
+    elif state == "entering_custom_date":
+        await handle_custom_date_input(update, context, text)
     elif state in [SELECTING_CAPSULE_FOR_RECIPIENTS, "sending_capsule", "deleting_capsule", "editing_capsule", "viewing_recipients", SELECTING_CAPSULE]:
         await handle_capsule_selection(update, context)
     else:
         await update.message.reply_text(t('create_capsule_first'))
+
+async def handle_custom_date_input(update: Update, context: CallbackContext, text: str):
+    """Обработчик ввода пользовательской даты в формате ЧЧ:ММ ДД.ММ.ГГГГ."""
+    try:
+        # Парсим введённую дату
+        send_date = datetime.strptime(text, '%H:%M %d.%m.%Y').replace(tzinfo=pytz.utc)
+        now = datetime.now(pytz.utc)
+        
+        # Проверяем, что дата в будущем
+        if send_date <= now:
+            await update.message.reply_text(
+                "❌ Ошибка: Укажите дату и время в будущем.\n"
+                "Пример: 21:12 17.03.2025"
+            )
+            return
+        
+        # Сохраняем дату в context
+        context.user_data['send_date'] = send_date
+        await update.message.reply_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
+        await save_send_date(update, context)
+        context.user_data['state'] = "idle"
+    except ValueError:
+        await update.message.reply_text(
+            "❌ Неверный формат даты. Используйте формат ЧЧ:ММ ДД.ММ.ГГГГ.\n"
+            "Пример: 21:12 17.03.2025"
+        )
 
 async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
     """Обработчик шагов создания капсулы. Добавляет текст в капсулу."""
