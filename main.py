@@ -24,6 +24,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 from supabase import create_client, Client
+from celery_config import app as celery_app
 
 # Локализация
 LOCALE = 'ru'
@@ -894,13 +895,9 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
     elif action == "view_recipients":
         await handle_view_recipients_logic(update, context, capsule_id)
     elif action == "select_send_date":
-        keyboard = [
-            [InlineKeyboardButton(t('through_week'), callback_data='week')],
-            [InlineKeyboardButton(t('through_month'), callback_data='month')],
-            [InlineKeyboardButton(t('select_date'), callback_data='calendar')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(t('choose_send_date'), reply_markup=reply_markup)
+        await update.message.reply_text(
+            "Введите дату и время отправки в формате 'день.месяц.год час:минута:секунда':"
+        )
         context.user_data['state'] = "selecting_send_date"
 
 async def handle_date_buttons(update: Update, context: CallbackContext):
@@ -1193,26 +1190,26 @@ async def save_send_date(update: Update, context: CallbackContext):
 
 async def post_init(application):
     """Инициализация задач после запуска бота."""
-    logger.info("Начало инициализации задач")
+    logger.info("[INIT] Начало инициализации планировщика")
     try:
         capsules = fetch_data("capsules")
-        logger.info(f"Найдено {len(capsules)} капсул в базе данных")
+        logger.info(f"[INIT] Найдено {len(capsules)} капсул в базе данных")
 
         now = datetime.now(pytz.utc)
-        logger.info(f"Текущее время UTC: {now}")
+        logger.info(f"[INIT] Текущее время UTC: {now}")
 
         for capsule in capsules:
             if capsule.get('scheduled_at'):
                 scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
-                logger.info(f"Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
+                logger.info(f"[INIT] Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
 
                 if scheduled_at > now:
-                    logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
+                    logger.info(f"[INIT] Добавление задачи для капсулы {capsule['id']}")
                     send_capsule_task.apply_async((capsule['id'],), eta=scheduled_at)
-                    logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
-        logger.info("Инициализация задач завершена")
+                    logger.info(f"[INIT] Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
+        logger.info("[INIT] Инициализация планировщика завершена")
     except Exception as e:
-        logger.error(f"Не удалось инициализировать задачи: {e}")
+        logger.error(f"[INIT ОШИБКА] Не удалось инициализировать планировщик: {str(e)}")
 
 async def check_bot_permissions(context: CallbackContext):
     """Проверка прав бота."""
@@ -1260,7 +1257,7 @@ async def main():
     await post_init(application)
     await application.start()
     await application.updater.start_polling()
-    await asyncio.Event().wait()
+    await asyncio.Event().wait()  # Ожидание завершения
 
 if __name__ == "__main__":
     # Настройка логирования
