@@ -978,15 +978,15 @@ async def handle_select_send_date(update: Update, context: CallbackContext, text
     """Обработчик ввода пользовательской даты отправки."""
     try:
         send_date_naive = datetime.strptime(text, "%d.%m.%Y %H:%M:%S")
-        send_date = pytz.utc.localize(send_date_naive)
+        send_date_utc = convert_to_utc(text)
         now = datetime.now(pytz.utc)
-        if send_date <= now:
+        if send_date_utc <= now:
             await update.message.reply_text(
                 "❌ Ошибка: Укажите дату и время в будущем.\n"
                 "Пример: 17.03.2025 21:12:00"
             )
             return
-        await save_send_date(update, context, send_date, is_message=True)
+        await save_send_date(update, context, send_date_utc, is_message=True)
     except ValueError:
         await update.message.reply_text(
             "❌ Неверный формат даты. Используйте формат 'день.месяц.год час:минута:секунда'.\n"
