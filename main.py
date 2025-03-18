@@ -811,7 +811,7 @@ async def view_recipients_command(update: Update, context: CallbackContext):
         context.user_data['state'] = "viewing_recipients"
 
 async def select_send_date(update: Update, context: CallbackContext):
-    """Обработчик команды /select_send_date."""
+    """Обработчик команды /select_send_date с выбором капсулы."""
     if await show_capsule_selection(update, context, "select_send_date"):
         context.user_data['state'] = SELECTING_CAPSULE
 
