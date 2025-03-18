@@ -776,9 +776,30 @@ async def handle_creation_steps(update: Update, context: CallbackContext):
         await update.message.reply_text("✏️ Добавьте контент (текст, фото, видео и т.д.):")
 
     elif state == CapsuleCreationState.CONTENT:
-        capsule_data['content']['text'].append(text)
+        if update.message.text:
+            capsule_data['content']['text'].append(update.message.text)
+        elif update.message.photo:
+            photo_file_id = (await update.message.photo[-1].get_file()).file_id
+            capsule_data['content']['photos'].append(photo_file_id)
+        elif update.message.video:
+            video_file_id = (await update.message.video.get_file()).file_id
+            capsule_data['content']['videos'].append(video_file_id)
+        elif update.message.audio:
+            audio_file_id = (await update.message.audio.get_file()).file_id
+            capsule_data['content']['audios'].append(audio_file_id)
+        elif update.message.document:
+            document_file_id = (await update.message.document.get_file()).file_id
+            capsule_data['content']['documents'].append(document_file_id)
+        elif update.message.sticker:
+            sticker_file_id = update.message.sticker.file_id
+            capsule_data['content']['stickers'].append(sticker_file_id)
+        elif update.message.voice:
+            voice_file_id = (await update.message.voice.get_file()).file_id
+            capsule_data['content']['voices'].append(voice_file_id)
+
+        context.user_data['capsule_data'] = capsule_data
         await update.message.reply_text(
-            "✅ Текст добавлен! Добавить ещё контент или завершить?",
+            "✅ Контент добавлен! Добавить ещё контент или завершить?",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("Добавить ещё", callback_data="add_more_content"),
                  InlineKeyboardButton("Далее", callback_data="next_to_recipients")]
