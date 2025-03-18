@@ -69,7 +69,7 @@ def get_chat_id(username: str) -> Optional[int]:
     return response[0]['chat_id'] if response else None
 
 
-@celery_app.task
+@celery_app.task(name='main.send_capsule_task')
 def send_capsule_task(capsule_id: int):
     """Задача Celery для отправки капсулы."""
     async def send_async():
