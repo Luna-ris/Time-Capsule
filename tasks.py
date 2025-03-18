@@ -90,14 +90,14 @@ def send_capsule_task(capsule_id: int):
             await bot.initialize()
 
             creator = fetch_data("users", {"id": capsule[0]['creator_id']})
-            creator_username = creator[0]['username'] if creator else "Unknown"
+            sender_username = creator[0]['username'] if creator else "Unknown"
 
             for recipient in recipients:
                 chat_id = get_chat_id(recipient['recipient_username'])
                 if chat_id:
                     await bot.bot.send_message(
                         chat_id=chat_id,
-                        text=t('capsule_received', sender=creator_username)
+                        text=t('capsule_received', sender=sender_username)
                     )
                     for item in content.get('text', []):
                         await bot.bot.send_message(chat_id, item)
@@ -115,8 +115,9 @@ def send_capsule_task(capsule_id: int):
                         await bot.bot.send_audio(chat_id, item)
                     logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
                 else:
-                    logger.error(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
-            await bot.shutdown()
+                    logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
+            logger.info(f"Капсула {capsule_id} успешно отправлена")
+            delete_capsule(capsule_id)
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
