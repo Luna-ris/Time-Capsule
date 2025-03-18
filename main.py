@@ -241,8 +241,7 @@ TRANSLATIONS = {
             "/delete_capsule - Elimina una cápsula si ya no la necesitas.\n"
             "/edit_capsule - Edita el contenido de la cápsula (texto).\n"
             "/view_recipients - Ver quién recibirá tu cápsula.\n"
-            "/select_send_date - Establece una fecha de envío para la cápsula.\n"
-            "*Ejemplo:* En una semana o un día específico.\n"
+            "/select_send_date - Establece una fecha de envío para la cápsula.\n*Ejemplo:* En una semana o un día específico.\n"
             "/support_author - Apoya al desarrollador del bot.\n"
             "/change_language - Cambia el idioma de la interfaz.\n\n"
         ),
@@ -351,7 +350,7 @@ TRANSLATIONS = {
         "select_capsule": "📦 Entrez le numéro de la capsule pour l'action :",
         "invalid_capsule_id": "❌ ID de capsule invalide. Vérifiez votre liste de capsules avec 'Voir les capsules'.",
         "recipients_added": (
-            "✅ Destinataires ajoutés à la capsule #{capsule_id} !\n"
+            "✅ Destinataires ajoutés à la capsule #{capsule_id}!\n"
             "Vous pouvez maintenant définir une date d'envoi ou l'envoyer immédiatement."
         ),
         "error_general": "⚠️ Quelque chose s'est mal passé. Réessayez ou contactez le support.",
@@ -379,7 +378,7 @@ TRANSLATIONS = {
         "recipients_list": "👥 Destinataires de la capsule #{capsule_id} :\n{recipients}",
         "no_recipients_for_capsule": "📭 Aucun destinataire trouvé pour la capsule #{capsule_id}.",
         "choose_send_date": "📅 Quand envoyer la capsule ?\nChoisissez une option :",
-        "through_week": "Dans une semana",
+        "through_week": "Dans une semaine",
         "through_month": "Dans un mois",
         "select_date": "Entrer votre propre date",
         "date_selected": "📅 Vous avez sélectionné : {date}\nLa capsule sera envoyée à ce moment-là.",
@@ -407,7 +406,7 @@ TRANSLATIONS = {
         "send_capsule_btn": "📨 Envoyer la Capsule",
         "delete_capsule_btn": "🗑 Supprimer la Capsule",
         "edit_capsule_btn": "✏️ Modifier la Capsule",
-        "view_recipients_btn": "👥 Voir les Destinataires",
+        "view_recipients_btn": "👥 Voir les Destinatarios",
         "help_btn": "❓ Aide",
         "select_send_date_btn": "📅 Définir la Date d'Envoi",
         "support_author_btn": "💸 Soutenir l'Auteur",
@@ -1091,28 +1090,29 @@ async def handle_text(update: Update, context: CallbackContext):
     else:
         await update.message.reply_text(t('create_capsule_first'))
 
-
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
     try:
         logger.info(f"Получена дата и время отправки: {text}")
+        send_date_naive = datetime.strptime(text, "%d.%m.%Y %H:%M:%S")
         send_date_utc = convert_to_utc(text)
         now = datetime.now(pytz.utc)
-        logger.info(f"Текущее время UTC: {now}, Указанная дата UTC: {send_date_utc}")
-        
+        logger.info(f"Текущее время UTC: {now}")
         if send_date_utc <= now:
-            await update.message.reply_text("❌ Ошибка: Укажите дату и время в будущем.\nПример: 17.03.2025 21:12:00")
+            await update.message.reply_text(
+                "❌ Ошибка: Укажите дату и время в будущем.\n"
+                "Пример: 17.03.2025 21:12:00"
+            )
             return
-        
         await save_send_date(update, context, send_date_utc, is_message=True)
     except ValueError as ve:
-        logger.error(f"Ошибка формата даты: {ve}")
+        logger.error(f"Ошибка конвертации даты: {ve}")
         await update.message.reply_text(
-            "❌ Неверный формат даты. Используйте 'день.месяц.год час:минута:секунда'.\nПример: 17.03.2025 21:12:00"
+            "❌ Неверный формат даты. Используйте формат 'день.месяц.год час:минута:секунда'.\n"
+            "Пример: 17.03.2025 21:12:00"
         )
     except Exception as e:
-        logger.error(f"Ошибка при установке даты отправки: {e}", exc_info=True)
+        logger.error(f"Ошибка при установке даты отправки: {e}")
         await update.message.reply_text(t('error_general'))
-
 
 async def handle_recipient(update: Update, context: CallbackContext):
     """Обработчик добавления получателей."""
@@ -1159,7 +1159,6 @@ async def handle_photo(update: Update, context: CallbackContext):
         return
     capsule_data = context.user_data.get('capsule_data', {})
     capsule_content = capsule_data.get('content', {"photos": []})
-    # Исправление: берем последний элемент списка photo и вызываем get_file
     photo_file_id = (await update.message.photo[-1].get_file()).file_id
     capsule_content.setdefault('photos', []).append(photo_file_id)
     capsule_data['content'] = capsule_content
@@ -1198,7 +1197,6 @@ async def handle_sticker(update: Update, context: CallbackContext):
 async def handle_voice(update: Update, context: CallbackContext):
     await handle_media(update, context, "voices", "voice")
 
-
 # Вспомогательные функции
 async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -> bool:
     """Проверка владения капсулой."""
@@ -1234,13 +1232,9 @@ def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> date
         utc_time = local_time.astimezone(pytz.utc)
         logger.info(f"Конвертация времени: {local_time_str} (местное) -> {utc_time} (UTC)")
         return utc_time
-    except ValueError as ve:
-        logger.error(f"Ошибка формата даты в convert_to_utc: {ve}")
-        raise
     except Exception as e:
         logger.error(f"Ошибка конвертации времени: {e}")
         raise
-
 
 async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
     try:
@@ -1252,7 +1246,6 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
                 await update.callback_query.edit_message_text(t('error_general'))
             return
 
-        # Убедитесь, что send_date в правильном часовом поясе
         send_date = send_date.astimezone(pytz.utc)
         logger.info(f"Установка даты отправки для капсулы {capsule_id}: {send_date}")
 
@@ -1355,7 +1348,7 @@ def send_capsule_task(capsule_id: int):
                     for item in content.get('audios', []):
                         await bot.bot.send_audio(chat_id, item)
                 else:
-                    logger.warning(f"Получатель {recipient['recipient_username']} не зарегистрирован")
+                    logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
             logger.info(f"Капсула {capsule_id} успешно отправлена")
             delete_capsule(capsule_id)
         except Exception as e:
