@@ -1286,13 +1286,6 @@ if __name__ == "__main__":
     SELECTING_CAPSULE = "selecting_capsule"
     SELECTING_CAPSULE_FOR_RECIPIENTS = "selecting_capsule_for_recipients"
 
-    # Заглушка для Celery (нужен celery_config и определение задачи)
-    from celery import Celery
-    app = Celery('tasks', broker=os.getenv("REDIS_URL"))
-    @app.task
-    def send_capsule_task(capsule_id: int):
-        pass  # Здесь должна быть логика отправки капсулы
-
     # Запуск бота
     nest_asyncio.apply()
     asyncio.run(main())
