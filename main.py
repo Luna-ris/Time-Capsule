@@ -979,31 +979,41 @@ async def handle_text(update: Update, context: CallbackContext):
     else:
         await update.message.reply_text(t('create_capsule_first'))
 
-async def handle_custom_date_input(update: Update, context: CallbackContext, text: str):
-    """Обработчик ввода пользовательской даты."""
+async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
+    """Обработчик установки даты отправки с использованием Celery."""
     try:
-        local_tz = pytz.timezone('Europe/Moscow')  # Замените на ваш часовой пояс
-        naive_date = datetime.strptime(text, '%H:%M %d.%m.%Y')
-        local_date = local_tz.localize(naive_date)
-        send_date = local_date.astimezone(pytz.utc)
+        send_date_naive = datetime.strptime(text, "%d.%m.%Y %H:%M:%S")
+        send_date = pytz.utc.localize(send_date_naive)
+        capsule_id = context.user_data.get('selected_capsule_id')
 
         now = datetime.now(pytz.utc)
         if send_date <= now:
             await update.message.reply_text(
                 "❌ Ошибка: Укажите дату и время в будущем.\n"
-                "Пример: 21:12 17.03.2025"
+                "Пример: 17.03.2025 21:12:00"
             )
             return
 
-        context.user_data['send_date'] = send_date
-        await update.message.reply_text(t('date_selected', date=local_date.strftime('%d.%m.%Y %H:%M')))
-        await save_send_date(update, context)
+        # Обновляем дату отправки в базе данных
+        edit_capsule(capsule_id, scheduled_at=send_date)
+
+        # Планируем задачу в Celery
+        send_capsule_task.apply_async(
+            args=[capsule_id],
+            eta=send_date
+        )
+        logger.info(f"Задача на отправку капсулы {capsule_id} запланирована на {send_date}")
+
+        await update.message.reply_text(t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M')))
         context.user_data['state'] = "idle"
     except ValueError:
         await update.message.reply_text(
-            "❌ Неверный формат даты. Используйте формат ЧЧ:ММ ДД.ММ.ГГГГ.\n"
-            "Пример: 21:12 17.03.2025"
+            "❌ Неверный формат даты. Используйте формат 'день.месяц.год час:минута:секунда'.\n"
+            "Пример: 17.03.2025 21:12:00"
         )
+    except Exception as e:
+        logger.error(f"Ошибка при установке даты отправки: {e}")
+        await update.message.reply_text(t('error_general'))
 
 async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
     """Обработчик шагов создания капсулы."""
