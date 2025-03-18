@@ -1065,7 +1065,7 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
 async def handle_edit_capsule_content(update: Update, context: CallbackContext):
     """Обработчик редактирования содержимого капсулы."""
     try:
-                capsule_id = context.user_data.get('selected_capsule_id')
+        capsule_id = context.user_data.get('selected_capsule_id')
         content = json.dumps({"text": [update.message.text]}, ensure_ascii=False)
         edit_capsule(capsule_id, content=content)
         await update.message.reply_text(t('capsule_edited', capsule_id=capsule_id))
