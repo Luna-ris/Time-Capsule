@@ -1194,6 +1194,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
         else:
             await update.callback_query.edit_message_text(t('error_general'))
 
+
 async def post_init(application: Application):
     """Инициализация задач после запуска бота."""
     logger.info("Начало инициализации задач")
