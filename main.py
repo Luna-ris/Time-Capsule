@@ -941,7 +941,7 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext):
     context.user_data['state'] = "idle"
 
 async def handle_text(update: Update, context: CallbackContext):
-    """Обработчик текстовых сообщений."""
+    """Обработчик текстовых сообщений с обработкой даты отправки."""
     text = update.message.text.strip()
     state = context.user_data.get('state', 'idle')
     actions = {
@@ -965,8 +965,8 @@ async def handle_text(update: Update, context: CallbackContext):
         await handle_recipient(update, context)
     elif state == "editing_capsule_content":
         await handle_edit_capsule_content(update, context)
-    elif state == "entering_custom_date":
-        await handle_custom_date_input(update, context, text)
+    elif state == "selecting_send_date":
+        await handle_select_send_date(update, context, text)
     elif state in [
         SELECTING_CAPSULE_FOR_RECIPIENTS,
         "sending_capsule",
