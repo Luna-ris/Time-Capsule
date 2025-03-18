@@ -864,7 +864,7 @@ async def handle_language_selection(update: Update, context: CallbackContext):
     )
 
 async def handle_capsule_selection(update: Update, context: CallbackContext):
-    """Обработчик выбора капсулы."""
+    """Обработчик выбора капсулы с обновленной логикой выбора даты."""
     text = update.message.text.strip()
     try:
         capsule_id = int(text.replace('#', ''))
@@ -894,13 +894,10 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
     elif action == "view_recipients":
         await handle_view_recipients_logic(update, context, capsule_id)
     elif action == "select_send_date":
-        keyboard = [
-            [InlineKeyboardButton(t('through_week'), callback_data='week')],
-            [InlineKeyboardButton(t('through_month'), callback_data='month')],
-            [InlineKeyboardButton(t('select_date'), callback_data='calendar')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(t('choose_send_date'), reply_markup=reply_markup)
+        await update.message.reply_text(
+            "Введите дату и время отправки в формате 'день.месяц.год час:минута:секунда':\n"
+            "Пример: 17.03.2025 21:12:00"
+        )
         context.user_data['state'] = "selecting_send_date"
 
 async def handle_date_buttons(update: Update, context: CallbackContext):
