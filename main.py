@@ -1162,7 +1162,7 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     encrypted = encrypt_data_aes(json_str, ENCRYPTION_KEY_BYTES)
     update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
-async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
+def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
     """Сохранение даты отправки капсулы."""
     try:
         capsule_id = context.user_data.get('selected_capsule_id')
@@ -1172,6 +1172,9 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             else:
                 await update.callback_query.edit_message_text(t('error_general'))
             return
+
+        # Убедитесь, что send_date в правильном часовом поясе
+        send_date = send_date.astimezone(pytz.utc)
 
         edit_capsule(capsule_id, scheduled_at=send_date)
         celery_app.send_task(
