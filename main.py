@@ -1158,7 +1158,7 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     encrypted = encrypt_data_aes(json_str, ENCRYPTION_KEY_BYTES)
     update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
-def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
+async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
     """Сохранение даты отправки капсулы."""
     try:
         capsule_id = context.user_data.get('selected_capsule_id')
