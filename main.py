@@ -979,6 +979,32 @@ async def handle_text(update: Update, context: CallbackContext):
     else:
         await update.message.reply_text(t('create_capsule_first'))
 
+async def post_init(application):
+    """Инициализация задач после запуска бота."""
+    logger.info("Начало инициализации задач")
+    try:
+        capsules = fetch_data("capsules")
+        logger.info(f"Найдено {len(capsules)} капсул в базе данных")
+
+        now = datetime.now(pytz.utc)
+        logger.info(f"Текущее время UTC: {now}")
+
+        for capsule in capsules:
+            if capsule.get('scheduled_at'):
+                scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
+                logger.info(f"Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
+
+                if scheduled_at > now:
+                    logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
+                    send_capsule_task.apply_async(
+                        args=[capsule['id']],
+                        eta=scheduled_at
+                    )
+                    logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
+        logger.info("Инициализация задач завершена")
+    except Exception as e:
+        logger.error(f"Не удалось инициализировать задачи: {e}")
+
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
     """Обработчик установки даты отправки с использованием Celery."""
     try:
