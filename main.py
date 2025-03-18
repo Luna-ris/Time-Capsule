@@ -1162,7 +1162,7 @@ async def handle_photo(update: Update, context: CallbackContext):
         return
     capsule_data = context.user_data.get('capsule_data', {})
     capsule_content = capsule_data.get('content', {"photos": []})
-    # Исправление: берем последний элемент кортежа photo и вызываем get_file
+    # Исправление: берем последний элемент списка photo и вызываем get_file
     photo_file_id = (await update.message.photo[-1].get_file()).file_id
     capsule_content.setdefault('photos', []).append(photo_file_id)
     capsule_data['content'] = capsule_content
