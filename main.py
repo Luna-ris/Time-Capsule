@@ -1170,7 +1170,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             return
 
         # Убедитесь, что send_date в правильном часовом поясе
-        send_date = send_date.astimezone(pytz.utc)
+        send_date = send_date.astimezone(pytz.timezone('Europe/Moscow'))
 
         edit_capsule(capsule_id, scheduled_at=send_date)
         celery_app.send_task(
