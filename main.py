@@ -1098,43 +1098,24 @@ async def handle_select_send_date(update: Update, context: CallbackContext, text
         send_date_naive = datetime.strptime(text, "%d.%m.%Y %H:%M:%S")
         send_date_utc = convert_to_utc(text)
         now = datetime.now(pytz.utc)
-        logger.info(f"Текущее время UTC: {now}, Указанное время UTC: {send_date_utc}")
-        
+        logger.info(f"Текущее время UTC: {now}")
         if send_date_utc <= now:
             await update.message.reply_text(
                 "❌ Ошибка: Укажите дату и время в будущем.\n"
                 "Пример: 17.03.2025 21:12:00"
             )
             return
-        
-        capsule_id = context.user_data.get('selected_capsule_id')
-        if not capsule_id:
-            logger.error("capsule_id не найден в context.user_data")
-            await update.message.reply_text(t('error_general'))
-            return
-
-        edit_capsule(capsule_id, scheduled_at=send_date_utc)
-        celery_app.send_task(
-            'main.send_capsule_task',
-            args=[capsule_id],
-            eta=send_date_utc
-        )
-        logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date_utc}")
-        
-        # Преобразуем время обратно в локальный часовой пояс для отображения пользователю
-        local_tz = pytz.timezone('Europe/Moscow')
-        send_date_local = send_date_utc.astimezone(local_tz)
-        await update.message.reply_text(t('date_set', date=send_date_local.strftime('%d.%m.%Y %H:%M')))
-        context.user_data['state'] = "idle"
+        await save_send_date(update, context, send_date_utc, is_message=True)
     except ValueError as ve:
-        logger.error(f"Ошибка формата даты: {ve}")
+        logger.error(f"Ошибка конвертации даты: {ve}")
         await update.message.reply_text(
-            "❌ Неверный формат даты. Используйте 'день.месяц.год час:минута:секунда'.\n"
+            "❌ Неверный формат даты. Используйте формат 'день.месяц.год час:минута:секунда'.\n"
             "Пример: 17.03.2025 21:12:00"
         )
     except Exception as e:
         logger.error(f"Ошибка при установке даты отправки: {e}")
         await update.message.reply_text(t('error_general'))
+
 
 async def handle_recipient(update: Update, context: CallbackContext):
     """Обработчик добавления получателей."""
