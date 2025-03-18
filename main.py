@@ -1095,25 +1095,22 @@ async def handle_text(update: Update, context: CallbackContext):
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
     try:
         logger.info(f"Получена дата и время отправки: {text}")
-        send_date_naive = datetime.strptime(text, "%d.%m.%Y %H:%M:%S")
         send_date_utc = convert_to_utc(text)
         now = datetime.now(pytz.utc)
-        logger.info(f"Текущее время UTC: {now}")
+        logger.info(f"Текущее время UTC: {now}, Указанная дата UTC: {send_date_utc}")
+        
         if send_date_utc <= now:
-            await update.message.reply_text(
-                "❌ Ошибка: Укажите дату и время в будущем.\n"
-                "Пример: 17.03.2025 21:12:00"
-            )
+            await update.message.reply_text("❌ Ошибка: Укажите дату и время в будущем.\nПример: 17.03.2025 21:12:00")
             return
+        
         await save_send_date(update, context, send_date_utc, is_message=True)
     except ValueError as ve:
-        logger.error(f"Ошибка конвертации даты: {ve}")
+        logger.error(f"Ошибка формата даты: {ve}")
         await update.message.reply_text(
-            "❌ Неверный формат даты. Используйте формат 'день.месяц.год час:минута:секунда'.\n"
-            "Пример: 17.03.2025 21:12:00"
+            "❌ Неверный формат даты. Используйте 'день.месяц.год час:минута:секунда'.\nПример: 17.03.2025 21:12:00"
         )
     except Exception as e:
-        logger.error(f"Ошибка при установке даты отправки: {e}")
+        logger.error(f"Ошибка при установке даты отправки: {e}", exc_info=True)
         await update.message.reply_text(t('error_general'))
 
 
