@@ -1093,7 +1093,6 @@ async def handle_text(update: Update, context: CallbackContext):
 
 
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
-    """Обработчик ввода пользовательской даты отправки."""
     try:
         send_date_naive = datetime.strptime(text, "%d.%m.%Y %H:%M:%S")
         send_date_utc = convert_to_utc(text)
