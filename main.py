@@ -677,12 +677,7 @@ def delete_capsule(capsule_id: int):
     delete_data("recipients", {"capsule_id": capsule_id})
     delete_data("capsules", {"id": capsule_id})
 
-def edit_capsule(
-    capsule_id: int,
-    title: Optional[str] = None,
-    content: Optional[str] = None,
-    scheduled_at: Optional[datetime] = None
-):
+def edit_capsule(capsule_id: int, title: Optional[str] = None, content: Optional[str] = None, scheduled_at: Optional[datetime] = None):
     """Редактирование капсулы."""
     data = {}
     if title:
@@ -693,6 +688,7 @@ def edit_capsule(
         data["scheduled_at"] = scheduled_at.astimezone(pytz.utc).isoformat()
     if data:
         update_data("capsules", {"id": capsule_id}, data)
+
 
 def get_user_capsules(telegram_id: int) -> list:
     """Получение списка капсул пользователя."""
