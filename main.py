@@ -1156,15 +1156,16 @@ async def handle_view_recipients_logic(update: Update, context: CallbackContext,
         await update.message.reply_text(t('error_general'))
 
 async def handle_photo(update: Update, context: CallbackContext):
-    """Обработчик добавления фото в капсулу."""
-    if not context.user_data.get('current_capsule'):
+    if context.user_data.get('state') != CapsuleCreationState.CONTENT:
         await update.message.reply_text(t('create_capsule_first'))
         return
-    capsule_content = context.user_data.get('capsule_content', {"photos": []})
+    capsule_data = context.user_data.get('capsule_data', {})
+    capsule_content = capsule_data.get('content', {"photos": []})
+    # Исправление: берем последний элемент кортежа photo и вызываем get_file
     photo_file_id = (await update.message.photo[-1].get_file()).file_id
     capsule_content.setdefault('photos', []).append(photo_file_id)
-    context.user_data['capsule_content'] = capsule_content
-    save_capsule_content(context, context.user_data['current_capsule'])
+    capsule_data['content'] = capsule_content
+    context.user_data['capsule_data'] = capsule_data
     await update.message.reply_text(t('photo_added'))
 
 async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str):
