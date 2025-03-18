@@ -24,6 +24,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 from supabase import create_client, Client
+from tasks import send_capsule_task
 
 # Локализация
 LOCALE = 'ru'
@@ -239,8 +240,7 @@ TRANSLATIONS = {
             "/delete_capsule - Elimina una cápsula si ya no la necesitas.\n"
             "/edit_capsule - Edita el contenido de la cápsula (texto).\n"
             "/view_recipients - Ver quién recibirá tu cápsula.\n"
-            "/select_send_date - Establece una fecha de envío para la cápsula.\n"
-            "*Ejemplo:* En una semana o un día específico.\n"
+            "/select_send_date - Establece una fecha de envío para la cápsula.\n*Ejemplo:* En una semana o un día específico.\n"
             "/support_author - Apoya al desarrollador del bot.\n"
             "/change_language - Cambia el idioma de la interfaz.\n\n"
         ),
@@ -1285,13 +1285,6 @@ if __name__ == "__main__":
     CREATING_CAPSULE = "creating_capsule"
     SELECTING_CAPSULE = "selecting_capsule"
     SELECTING_CAPSULE_FOR_RECIPIENTS = "selecting_capsule_for_recipients"
-
-    # Заглушка для Celery (нужен celery_config и определение задачи)
-    from celery import Celery
-    app = Celery('tasks', broker=os.getenv("REDIS_URL"))
-    @app.task
-    def send_capsule_task(capsule_id: int):
-        pass  # Здесь должна быть логика отправки капсулы
 
     # Запуск бота
     nest_asyncio.apply()
