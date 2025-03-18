@@ -1252,6 +1252,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
 
         # Убедитесь, что send_date в правильном часовом поясе
         send_date = send_date.astimezone(pytz.utc)
+        logger.info(f"Установка даты отправки для капсулы {capsule_id}: {send_date}")
 
         edit_capsule(capsule_id, scheduled_at=send_date)
         celery_app.send_task(
@@ -1273,7 +1274,6 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(t('error_general'))
         else:
             await update.callback_query.edit_message_text(t('error_general'))
-
 
 async def post_init(application: Application):
     """Инициализация задач после запуска бота."""
