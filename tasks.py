@@ -71,7 +71,6 @@ def get_chat_id(username: str) -> Optional[int]:
 
 @celery_app.task(name='main.send_capsule_task')
 def send_capsule_task(capsule_id: int):
-    """Задача Celery для отправки капсулы."""
     async def send_async():
         try:
             logger.info(f"Начинаю отправку капсулы {capsule_id}")
@@ -101,24 +100,26 @@ def send_capsule_task(capsule_id: int):
                     )
                     for item in content.get('text', []):
                         await bot.bot.send_message(chat_id, item)
-                    for item in content.get('stickers', []):
-                        await bot.bot.send_sticker(chat_id, item)
                     for item in content.get('photos', []):
                         await bot.bot.send_photo(chat_id, item)
-                    for item in content.get('documents', []):
-                        await bot.bot.send_document(chat_id, item)
-                    for item in content.get('voices', []):
-                        await bot.bot.send_voice(chat_id, item)
                     for item in content.get('videos', []):
                         await bot.bot.send_video(chat_id, item)
                     for item in content.get('audios', []):
                         await bot.bot.send_audio(chat_id, item)
+                    for item in content.get('documents', []):
+                        await bot.bot.send_document(chat_id, item)
+                    for item in content.get('stickers', []):
+                        await bot.bot.send_sticker(chat_id, item)
+                    for item in content.get('voices', []):
+                        await bot.bot.send_voice(chat_id, item)
                     logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
                 else:
                     logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
-            logger.info(f"Капсула {capsule_id} успешно отправлена")
             delete_capsule(capsule_id)
+            logger.info(f"Капсула {capsule_id} успешно отправлена и удалена")
         except Exception as e:
-            logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
+            logger.error(f"Ошибка при отправке капсулы {capsule_id}: {e}")
+        finally:
+            await bot.shutdown()
 
     asyncio.run(send_async())
