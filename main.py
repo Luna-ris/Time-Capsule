@@ -1232,7 +1232,6 @@ def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> date
     return utc_time
 
 async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
-    """Сохранение даты отправки капсулы."""
     try:
         capsule_id = context.user_data.get('selected_capsule_id')
         if not capsule_id:
@@ -1265,6 +1264,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(t('error_general'))
         else:
             await update.callback_query.edit_message_text(t('error_general'))
+
 
 async def post_init(application: Application):
     """Инициализация задач после запуска бота."""
