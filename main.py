@@ -1166,40 +1166,37 @@ async def handle_photo(update: Update, context: CallbackContext):
     await update.message.reply_text(t('photo_added'))
 
 async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str):
-    """Обработчик медиафайлов."""
-    if not context.user_data.get('current_capsule'):
+    if context.user_data.get('state') != CapsuleCreationState.CONTENT:
         await update.message.reply_text(t('create_capsule_first'))
         return
-    capsule_content = context.user_data.get('capsule_content', {media_type: []})
+    capsule_content = context.user_data.get('capsule_data', {}).get('content', {media_type: []})
     try:
         file_id = (await getattr(update.message, file_attr).get_file()).file_id
         capsule_content.setdefault(media_type, []).append(file_id)
-        context.user_data['capsule_content'] = capsule_content
-        save_capsule_content(context, context.user_data['current_capsule'])
+        context.user_data['capsule_data']['content'] = capsule_content
         await update.message.reply_text(t(f'{media_type[:-1]}_added'))
     except Exception as e:
         logger.error(f"Ошибка при добавлении {media_type[:-1]}: {e}")
         await update.message.reply_text(t('error_general'))
 
+async def handle_photo(update: Update, context: CallbackContext):
+    await handle_media(update, context, "photos", "photo")
+
 async def handle_video(update: Update, context: CallbackContext):
-    """Обработчик добавления видео."""
     await handle_media(update, context, "videos", "video")
 
 async def handle_audio(update: Update, context: CallbackContext):
-    """Обработчик добавления аудио."""
     await handle_media(update, context, "audios", "audio")
 
 async def handle_document(update: Update, context: CallbackContext):
-    """Обработчик добавления документа."""
     await handle_media(update, context, "documents", "document")
 
 async def handle_sticker(update: Update, context: CallbackContext):
-    """Обработчик добавления стикера."""
     await handle_media(update, context, "stickers", "sticker")
 
 async def handle_voice(update: Update, context: CallbackContext):
-    """Обработчик добавления голосового сообщения."""
     await handle_media(update, context, "voices", "voice")
+
 
 # Вспомогательные функции
 async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -> bool:
