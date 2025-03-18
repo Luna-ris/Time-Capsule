@@ -72,7 +72,6 @@ def get_chat_id(username: str) -> Optional[int]:
 @celery_app.task
 def send_capsule_task(capsule_id: int):
     """Задача Celery для отправки капсулы."""
-
     async def send_async():
         try:
             logger.info(f"Начинаю отправку капсулы {capsule_id}")
@@ -87,20 +86,37 @@ def send_capsule_task(capsule_id: int):
                 logger.error(f"Нет получателей для капсулы {capsule_id}")
                 return
 
-            bot = Bot(token=TELEGRAM_TOKEN)
+            bot = Application.builder().token(TELEGRAM_TOKEN).build()
+            await bot.initialize()
+
+            creator = fetch_data("users", {"id": capsule[0]['creator_id']})
+            creator_username = creator[0]['username'] if creator else "Unknown"
+
             for recipient in recipients:
                 chat_id = get_chat_id(recipient['recipient_username'])
                 if chat_id:
-                    logger.info(f"Отправляю капсулу {capsule_id} пользователю @{recipient['recipient_username']}")
-                    await bot.send_message(
+                    await bot.bot.send_message(
                         chat_id=chat_id,
-                        text=f"🎁 Вам пришла капсула времени от @{capsule[0]['creator_id']}!"
+                        text=t('capsule_received', sender=creator_username)
                     )
                     for item in content.get('text', []):
-                        await bot.send_message(chat_id, item)
-                    # TODO: Добавить поддержку других типов контента (фото, видео и т.д.)
+                        await bot.bot.send_message(chat_id, item)
+                    for item in content.get('stickers', []):
+                        await bot.bot.send_sticker(chat_id, item)
+                    for item in content.get('photos', []):
+                        await bot.bot.send_photo(chat_id, item)
+                    for item in content.get('documents', []):
+                        await bot.bot.send_document(chat_id, item)
+                    for item in content.get('voices', []):
+                        await bot.bot.send_voice(chat_id, item)
+                    for item in content.get('videos', []):
+                        await bot.bot.send_video(chat_id, item)
+                    for item in content.get('audios', []):
+                        await bot.bot.send_audio(chat_id, item)
+                    logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
                 else:
                     logger.error(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
+            await bot.shutdown()
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
