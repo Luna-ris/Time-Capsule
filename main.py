@@ -1228,11 +1228,17 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
 
 def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> datetime:
     """Конвертация местного времени в UTC."""
-    local_tz = pytz.timezone(timezone)
-    local_time = datetime.strptime(local_time_str, "%d.%m.%Y %H:%M:%S")
-    local_time = local_tz.localize(local_time)
-    utc_time = local_time.astimezone(pytz.utc)
-    return utc_time
+    try:
+        local_tz = pytz.timezone(timezone)
+        local_time = datetime.strptime(local_time_str, "%d.%m.%Y %H:%M:%S")
+        local_time = local_tz.localize(local_time)
+        utc_time = local_time.astimezone(pytz.utc)
+        logger.info(f"Конвертация времени: {local_time_str} (местное) -> {utc_time} (UTC)")
+        return utc_time
+    except Exception as e:
+        logger.error(f"Ошибка конвертации времени: {e}")
+        raise
+
 
 async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
     try:
