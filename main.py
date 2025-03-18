@@ -1170,7 +1170,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             return
 
         # Убедитесь, что send_date в правильном часовом поясе
-        send_date = send_date.astimezone(pytz.timezone('Europe/Moscow'))
+        send_date = send_date.astimezone(pytz.utc)
 
         edit_capsule(capsule_id, scheduled_at=send_date)
         celery_app.send_task(
@@ -1180,7 +1180,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
         )
         logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
 
-        message_text = t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M'))
+        message_text = t('date_set', date=send_date.astimezone(pytz.timezone('Europe/Moscow')).strftime('%d.%m.%Y %H:%M'))
         if is_message:
             await update.message.reply_text(message_text)
         else:
@@ -1192,6 +1192,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(t('error_general'))
         else:
             await update.callback_query.edit_message_text(t('error_general'))
+
 
 
 async def post_init(application: Application):
