@@ -14,6 +14,7 @@ from supabase import create_client, Client
 from telegram import Bot
 import os
 
+
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -37,12 +38,14 @@ if len(ENCRYPTION_KEY_BYTES) != 32:
 # Инициализация Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
 def fetch_data(table: str, query: dict = {}) -> List[dict]:
     """Получение данных из Supabase."""
     response = supabase.table(table).select("*")
     for key, value in query.items():
         response = response.eq(key, value)
     return response.execute().data
+
 
 def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     """Дешифрование данных с помощью AES."""
@@ -54,14 +57,17 @@ def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     unpadder = padding.PKCS7(128).unpadder()
     return unpadder.update(decrypted) + unpadder.finalize().decode('utf-8')
 
+
 def get_capsule_recipients(capsule_id: int) -> List[dict]:
     """Получение списка получателей капсулы."""
     return fetch_data("recipients", {"capsule_id": capsule_id})
+
 
 def get_chat_id(username: str) -> Optional[int]:
     """Получение chat_id по имени пользователя."""
     response = fetch_data("users", {"username": username})
     return response[0]['chat_id'] if response else None
+
 
 @celery_app.task
 def send_capsule_task(capsule_id: int):
@@ -92,18 +98,7 @@ def send_capsule_task(capsule_id: int):
                     )
                     for item in content.get('text', []):
                         await bot.send_message(chat_id, item)
-                    for item in content.get('stickers', []):
-                        await bot.send_sticker(chat_id, item)
-                    for item in content.get('photos', []):
-                        await bot.send_photo(chat_id, item)
-                    for item in content.get('documents', []):
-                        await bot.send_document(chat_id, item)
-                    for item in content.get('voices', []):
-                        await bot.send_voice(chat_id, item)
-                    for item in content.get('videos', []):
-                        await bot.send_video(chat_id, item)
-                    for item in content.get('audios', []):
-                        await bot.send_audio(chat_id, item)
+                    # TODO: Добавить поддержку других типов контента (фото, видео и т.д.)
                 else:
                     logger.error(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
         except Exception as e:
