@@ -19,11 +19,13 @@ from telegram.ext import (
     filters,
     CallbackQueryHandler,
     CallbackContext,
+    Application
 )
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 from supabase import create_client, Client
+from celery import Celery
 
 # Локализация
 LOCALE = 'ru'
@@ -94,7 +96,7 @@ TRANSLATIONS = {
         "choose_send_date": "📅 Когда отправить капсулу?\nВыберите один из вариантов:",
         "through_week": "Через неделю",
         "through_month": "Через месяц",
-        "select_date": "Выбрать дату",
+        "select_date": "Ввести свою дату",
         "date_selected": "📅 Вы выбрали дату: {date}\nКапсула будет отправлена в указанное время.",
         "date_set": "✅ Дата отправки капсулы установлена на {date}. Ожидайте!",
         "support_author": (
@@ -190,7 +192,7 @@ TRANSLATIONS = {
         "choose_send_date": "📅 When should the capsule be sent?\nChoose an option:",
         "through_week": "In a week",
         "through_month": "In a month",
-        "select_date": "Select a date",
+        "select_date": "Enter your own date",
         "date_selected": "📅 You’ve selected: {date}\nThe capsule will be sent at this time.",
         "date_set": "✅ Capsule send date set to {date}. Stay tuned!",
         "support_author": (
@@ -285,7 +287,7 @@ TRANSLATIONS = {
         "choose_send_date": "📅 ¿Cuándo enviar la cápsula?\nElige una opción:",
         "through_week": "En una semana",
         "through_month": "En un mes",
-        "select_date": "Seleccionar fecha",
+        "select_date": "Ingresar tu propia fecha",
         "date_selected": "📅 Has seleccionado: {date}\nLa cápsula será enviada en ese momento.",
         "date_set": "✅ Fecha de envío de la cápsula establecida para {date}. ¡Mantente atento!",
         "support_author": (
@@ -379,7 +381,7 @@ TRANSLATIONS = {
         "choose_send_date": "📅 Quand envoyer la capsule ?\nChoisissez une option :",
         "through_week": "Dans une semaine",
         "through_month": "Dans un mois",
-        "select_date": "Sélectionner une date",
+        "select_date": "Entrer votre propre date",
         "date_selected": "📅 Vous avez sélectionné : {date}\nLa capsule sera envoyée à ce moment-là.",
         "date_set": "✅ Date d'envoi de la capsule définie sur {date}. Restez à l'écoute !",
         "support_author": (
@@ -475,7 +477,7 @@ TRANSLATIONS = {
         "choose_send_date": "📅 Wann soll die Kapsel gesendet werden?\nWählen Sie eine Option:",
         "through_week": "In einer Woche",
         "through_month": "In einem Monat",
-        "select_date": "Datum auswählen",
+        "select_date": "Eigene Datum eingeben",
         "date_selected": "📅 Sie haben ausgewählt: {date}\nDie Kapsel wird zu diesem Zeitpunkt gesendet.",
         "date_set": "✅ Sendedatum der Kapsel auf {date} festgelegt. Bleiben Sie dran!",
         "support_author": (
@@ -516,6 +518,14 @@ def t(key: str, **kwargs) -> str:
     translation = TRANSLATIONS.get(LOCALE, TRANSLATIONS['en']).get(key, key)
     return translation.format(**kwargs) if kwargs else translation
 
+# Настройка Celery
+celery_app = Celery('tasks', broker=os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
+celery_app.conf.task_serializer = 'json'
+celery_app.conf.result_serializer = 'json'
+celery_app.conf.accept_content = ['json']
+celery_app.conf.timezone = 'UTC'
+celery_app.conf.broker_connection_retry_on_startup = True
+
 # Функции запуска сервисов
 def start_process(command: str, name: str) -> bool:
     """Запуск процесса с логированием."""
@@ -545,7 +555,7 @@ def start_services():
     if not redis_url:
         logger.error("Переменная REDIS_URL не задана.")
         sys.exit(1)
-    celery_command = "celery -A celery_config.app worker --loglevel=info --pool=solo"
+    celery_command = "celery -A main.celery_app worker --loglevel=info --pool=solo"
     if not start_process(celery_command, "Celery"):
         logger.error("Не удалось запустить Celery.")
         sys.exit(1)
@@ -864,7 +874,7 @@ async def handle_language_selection(update: Update, context: CallbackContext):
     )
 
 async def handle_capsule_selection(update: Update, context: CallbackContext):
-    """Обработчик выбора капсулы с обновленной логикой выбора даты."""
+    """Обработчик выбора капсулы с логикой выбора даты."""
     text = update.message.text.strip()
     try:
         capsule_id = int(text.replace('#', ''))
@@ -894,40 +904,29 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
     elif action == "view_recipients":
         await handle_view_recipients_logic(update, context, capsule_id)
     elif action == "select_send_date":
-        await update.message.reply_text(
-            "Введите дату и время отправки в формате 'день.месяц.год час:минута:секунда':\n"
-            "Пример: 17.03.2025 21:12:00"
-        )
-        context.user_data['state'] = "selecting_send_date"
+        keyboard = [
+            [InlineKeyboardButton(t("through_week"), callback_data="week")],
+            [InlineKeyboardButton(t("through_month"), callback_data="month")],
+            [InlineKeyboardButton(t("select_date"), callback_data="custom")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(t('choose_send_date'), reply_markup=reply_markup)
 
 async def handle_date_buttons(update: Update, context: CallbackContext):
-    """Обработчик выбора даты отправки."""
+    """Обработчик кнопок выбора даты отправки."""
     query = update.callback_query
     if query.data == 'week':
         send_date = datetime.now(pytz.utc) + timedelta(weeks=1)
-        context.user_data['send_date'] = send_date
-        await query.edit_message_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
-        await save_send_date(update, context)
+        await save_send_date(update, context, send_date)
     elif query.data == 'month':
         send_date = datetime.now(pytz.utc) + timedelta(days=30)
-        context.user_data['send_date'] = send_date
-        await query.edit_message_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
-        await save_send_date(update, context)
-    elif query.data == 'calendar':
+        await save_send_date(update, context, send_date)
+    elif query.data == 'custom':
         await query.edit_message_text(
-            "📅 Пожалуйста, введите дату и время отправки в формате ЧЧ:ММ ДД.ММ.ГГГГ.\n"
-            "Пример: 21:12 17.03.2025\n"
+            "📅 Введите дату и время отправки в формате 'день.месяц.год час:минута:секунда'.\n"
+            "Пример: 17.03.2025 21:12:00"
         )
         context.user_data['state'] = "entering_custom_date"
-
-async def handle_calendar_selection(update: Update, context: CallbackContext):
-    """Обработчик выбора даты из календаря (устаревшая функция)."""
-    query = update.callback_query
-    selected_day = int(query.data.split('_')[1])
-    send_date = datetime.now(pytz.utc).replace(day=selected_day, hour=0, minute=0, second=0, microsecond=0)
-    context.user_data['send_date'] = send_date
-    await query.edit_message_text(t('date_selected', date=send_date.strftime('%d.%m.%Y %H:%M')))
-    await save_send_date(update, context)
 
 async def handle_delete_confirmation(update: Update, context: CallbackContext):
     """Обработчик подтверждения удаления капсулы."""
@@ -941,7 +940,7 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext):
     context.user_data['state'] = "idle"
 
 async def handle_text(update: Update, context: CallbackContext):
-    """Обработчик текстовых сообщений с обработкой даты отправки."""
+    """Обработчик текстовых сообщений с обработкой пользовательской даты."""
     text = update.message.text.strip()
     state = context.user_data.get('state', 'idle')
     actions = {
@@ -965,7 +964,7 @@ async def handle_text(update: Update, context: CallbackContext):
         await handle_recipient(update, context)
     elif state == "editing_capsule_content":
         await handle_edit_capsule_content(update, context)
-    elif state == "selecting_send_date":
+    elif state == "entering_custom_date":
         await handle_select_send_date(update, context, text)
     elif state in [
         SELECTING_CAPSULE_FOR_RECIPIENTS,
@@ -979,39 +978,11 @@ async def handle_text(update: Update, context: CallbackContext):
     else:
         await update.message.reply_text(t('create_capsule_first'))
 
-async def post_init(application):
-    """Инициализация задач после запуска бота."""
-    logger.info("Начало инициализации задач")
-    try:
-        capsules = fetch_data("capsules")
-        logger.info(f"Найдено {len(capsules)} капсул в базе данных")
-
-        now = datetime.now(pytz.utc)
-        logger.info(f"Текущее время UTC: {now}")
-
-        for capsule in capsules:
-            if capsule.get('scheduled_at'):
-                scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
-                logger.info(f"Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
-
-                if scheduled_at > now:
-                    logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
-                    send_capsule_task.apply_async(
-                        args=[capsule['id']],
-                        eta=scheduled_at
-                    )
-                    logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
-        logger.info("Инициализация задач завершена")
-    except Exception as e:
-        logger.error(f"Не удалось инициализировать задачи: {e}")
-
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
-    """Обработчик установки даты отправки с использованием Celery."""
+    """Обработчик ввода пользовательской даты отправки."""
     try:
         send_date_naive = datetime.strptime(text, "%d.%m.%Y %H:%M:%S")
         send_date = pytz.utc.localize(send_date_naive)
-        capsule_id = context.user_data.get('selected_capsule_id')
-
         now = datetime.now(pytz.utc)
         if send_date <= now:
             await update.message.reply_text(
@@ -1019,19 +990,7 @@ async def handle_select_send_date(update: Update, context: CallbackContext, text
                 "Пример: 17.03.2025 21:12:00"
             )
             return
-
-        # Обновляем дату отправки в базе данных
-        edit_capsule(capsule_id, scheduled_at=send_date)
-
-        # Планируем задачу в Celery
-        send_capsule_task.apply_async(
-            args=[capsule_id],
-            eta=send_date
-        )
-        logger.info(f"Задача на отправку капсулы {capsule_id} запланирована на {send_date}")
-
-        await update.message.reply_text(t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M')))
-        context.user_data['state'] = "idle"
+        await save_send_date(update, context, send_date, is_message=True)
     except ValueError:
         await update.message.reply_text(
             "❌ Неверный формат даты. Используйте формат 'день.месяц.год час:минута:секунда'.\n"
@@ -1079,7 +1038,7 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
             if chat_id:
                 await context.bot.send_message(
                     chat_id=chat_id,
-                    text=t('capsule_received', sender=update.effective_user.username)
+                    text=t('capsule_received', sender=update.effective_user.username or "Unknown")
                 )
                 for item in content.get('text', []):
                     await context.bot.send_message(chat_id, item)
@@ -1106,7 +1065,7 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
 async def handle_edit_capsule_content(update: Update, context: CallbackContext):
     """Обработчик редактирования содержимого капсулы."""
     try:
-        capsule_id = context.user_data.get('selected_capsule_id')
+                capsule_id = context.user_data.get('selected_capsule_id')
         content = json.dumps({"text": [update.message.text]}, ensure_ascii=False)
         edit_capsule(capsule_id, content=content)
         await update.message.reply_text(t('capsule_edited', capsule_id=capsule_id))
@@ -1153,7 +1112,6 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         context.user_data['capsule_content'] = capsule_content
         save_capsule_content(context, context.user_data['current_capsule'])
         await update.message.reply_text(t(f'{media_type[:-1]}_added'))
-        logger.info(f"Добавлен {media_type[:-1]} в капсулу #{context.user_data['current_capsule']}")
     except Exception as e:
         logger.error(f"Ошибка при добавлении {media_type[:-1]}: {e}")
         await update.message.reply_text(t('error_general'))
@@ -1204,27 +1162,39 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     encrypted = encrypt_data_aes(json_str, ENCRYPTION_KEY_BYTES)
     update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
-async def save_send_date(update: Update, context: CallbackContext):
+async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
     """Сохранение даты отправки капсулы."""
     try:
-        send_date = context.user_data.get('send_date')
         capsule_id = context.user_data.get('selected_capsule_id')
-        if not send_date or not capsule_id:
-            await update.callback_query.edit_message_text(t('error_general'))
+        if not capsule_id:
+            if is_message:
+                await update.message.reply_text(t('error_general'))
+            else:
+                await update.callback_query.edit_message_text(t('error_general'))
             return
 
         edit_capsule(capsule_id, scheduled_at=send_date)
-        logger.info(f"Планирую задачу для капсулы {capsule_id} на {send_date}")
-        send_capsule_task.apply_async((capsule_id,), eta=send_date)
-        logger.info(f"Задача для капсулы {capsule_id} успешно запланирована")
+        celery_app.send_task(
+            'main.send_capsule_task',
+            args=[capsule_id],
+            eta=send_date
+        )
+        logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
 
-        await update.callback_query.edit_message_text(t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M')))
+        message_text = t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M'))
+        if is_message:
+            await update.message.reply_text(message_text)
+        else:
+            await update.callback_query.edit_message_text(message_text)
         context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
-        await update.callback_query.edit_message_text(t('error_general'))
+        if is_message:
+            await update.message.reply_text(t('error_general'))
+        else:
+            await update.callback_query.edit_message_text(t('error_general'))
 
-async def post_init(application):
+async def post_init(application: Application):
     """Инициализация задач после запуска бота."""
     logger.info("Начало инициализации задач")
     try:
@@ -1241,7 +1211,11 @@ async def post_init(application):
 
                 if scheduled_at > now:
                     logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
-                    send_capsule_task.apply_async((capsule['id'],), eta=scheduled_at)
+                    celery_app.send_task(
+                        'main.send_capsule_task',
+                        args=[capsule['id']],
+                        eta=scheduled_at
+                    )
                     logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
         logger.info("Инициализация задач завершена")
     except Exception as e:
@@ -1252,80 +1226,110 @@ async def check_bot_permissions(context: CallbackContext):
     me = await context.bot.get_me()
     logger.info(f"Бот запущен как @{me.username}")
 
-# Главная функция
-async def main():
-    """Запуск бота."""
-    start_services()
-    application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-    await check_bot_permissions(application)
+# Задача Celery для отправки капсулы
+@celery_app.task(name='main.send_capsule_task')
+def send_capsule_task(capsule_id: int):
+    """Задача Celery для отправки капсулы."""
+    async def send_async():
+        try:
+            logger.info(f"Начинаю отправку капсулы {capsule_id}")
+            capsule = fetch_data("capsules", {"id": capsule_id})
+            if not capsule:
+                logger.error(f"Капсула {capsule_id} не найдена")
+                return
 
-    # Регистрация обработчиков
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("create_capsule", create_capsule_command))
-    application.add_handler(CommandHandler("add_recipient", add_recipient_command))
-    application.add_handler(CommandHandler("view_capsules", view_capsules_command))
-    application.add_handler(CommandHandler("send_capsule", send_capsule_command))
-    application.add_handler(CommandHandler("delete_capsule", delete_capsule_command))
-    application.add_handler(CommandHandler("edit_capsule", edit_capsule_command))
-    application.add_handler(CommandHandler("view_recipients", view_recipients_command))
-    application.add_handler(CommandHandler("support_author", support_author))
-    application.add_handler(CommandHandler("select_send_date", select_send_date))
-    application.add_handler(CommandHandler("change_language", change_language))
+            content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
+            recipients = get_capsule_recipients(capsule_id)
+            if not recipients:
+                logger.error(f"Нет получателей для капсулы {capsule_id}")
+                return
 
-    application.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r'^(ru|en|es|fr|de)$'))
-    application.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r'^(week|month|calendar)$'))
-    application.add_handler(CallbackQueryHandler(handle_calendar_selection, pattern=r'^day_\d+$'))
-    application.add_handler(CallbackQueryHandler(
-        handle_delete_confirmation,
-        pattern=r'^(confirm_delete|cancel_delete)$'
-    ))
+            bot = Application.builder().token(TELEGRAM_TOKEN).build()
+            await bot.initialize()
 
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    application.add_handler(MessageHandler(filters.VIDEO, handle_video))
-    application.add_handler(MessageHandler(filters.AUDIO, handle_audio))
-    application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-    application.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
-    application.add_handler(MessageHandler(filters.VOICE, handle_voice))
+            creator = fetch_data("users", {"id": capsule[0]['creator_id']})
+            sender_username = creator[0]['username'] if creator else "Unknown"
 
-    await application.initialize()
-    await post_init(application)
-    await application.start()
-    await application.updater.start_polling()
-    await asyncio.Event().wait()
+            for recipient in recipients:
+                chat_id = get_chat_id(recipient['recipient_username'])
+                if chat_id:
+                    await bot.bot.send_message(
+                        chat_id=chat_id,
+                        text=t('capsule_received', sender=sender_username)
+                    )
+                    for item in content.get('text', []):
+                        await bot.bot.send_message(chat_id, item)
+                    for item in content.get('stickers', []):
+                        await bot.bot.send_sticker(chat_id, item)
+                    for item in content.get('photos', []):
+                        await bot.bot.send_photo(chat_id, item)
+                    for item in content.get('documents', []):
+                        await bot.bot.send_document(chat_id, item)
+                    for item in content.get('voices', []):
+                        await bot.bot.send_voice(chat_id, item)
+                    for item in content.get('videos', []):
+                        await bot.bot.send_video(chat_id, item)
+                    for item in content.get('audios', []):
+                        await bot.bot.send_audio(chat_id, item)
+                else:
+                    logger.warning(f"Получатель {recipient['recipient_username']} не зарегистрирован")
+            logger.info(f"Капсула {capsule_id} успешно отправлена")
+            delete_capsule(capsule_id)
+        except Exception as e:
+            logger.error(f"Ошибка при отправке капсулы {capsule_id}: {e}")
+
+    asyncio.run(send_async())
+
+# Инициализация
+load_dotenv()
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if not all([TELEGRAM_TOKEN, ENCRYPTION_KEY, SUPABASE_URL, SUPABASE_KEY]):
+    logger.error("Не все обязательные переменные окружения заданы.")
+    sys.exit(1)
+
+ENCRYPTION_KEY_BYTES = ENCRYPTION_KEY.encode('utf-8').ljust(32)[:32]
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+CREATING_CAPSULE = "creating_capsule"
+SELECTING_CAPSULE = "selecting_capsule"
+SELECTING_CAPSULE_FOR_RECIPIENTS = "selecting_capsule_for_recipients"
+
+start_services()
+
+app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CommandHandler("create_capsule", create_capsule_command))
+app.add_handler(CommandHandler("add_recipient", add_recipient_command))
+app.add_handler(CommandHandler("view_capsules", view_capsules_command))
+app.add_handler(CommandHandler("send_capsule", send_capsule_command))
+app.add_handler(CommandHandler("delete_capsule", delete_capsule_command))
+app.add_handler(CommandHandler("edit_capsule", edit_capsule_command))
+app.add_handler(CommandHandler("view_recipients", view_recipients_command))
+app.add_handler(CommandHandler("select_send_date", select_send_date))
+app.add_handler(CommandHandler("support_author", support_author))
+app.add_handler(CommandHandler("change_language", change_language))
+
+app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
+app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
+app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
+
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+app.add_handler(MessageHandler(filters.VIDEO, handle_video))
+app.add_handler(MessageHandler(filters.AUDIO, handle_audio))
+app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+app.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
+app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
 if __name__ == "__main__":
-    # Настройка логирования
-    logging.basicConfig(
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        level=logging.INFO
-    )
-    logger = logging.getLogger(__name__)
-
-    # Загрузка переменных окружения
-    load_dotenv()
-    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-    SUPABASE_URL = os.getenv("SUPABASE_URL")
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-    ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "default_key_32_bytes_long!!!!!!!")
-    ENCRYPTION_KEY_BYTES = ENCRYPTION_KEY.encode('utf-8')[:32].ljust(32, b'\0')
-
-    # Инициализация Supabase
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-    # Константы состояний
-    CREATING_CAPSULE = "creating_capsule"
-    SELECTING_CAPSULE = "selecting_capsule"
-    SELECTING_CAPSULE_FOR_RECIPIENTS = "selecting_capsule_for_recipients"
-
-    # Заглушка для Celery (нужен celery_config и определение задачи)
-    from celery import Celery
-    app = Celery('tasks', broker=os.getenv("REDIS_URL"))
-    @app.task
-    def send_capsule_task(capsule_id: int):
-        pass  # Здесь должна быть логика отправки капсулы
-
-    # Запуск бота
     nest_asyncio.apply()
-    asyncio.run(main())
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
