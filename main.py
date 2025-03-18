@@ -1053,7 +1053,6 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext):
     context.user_data['state'] = "idle"
 
 async def handle_text(update: Update, context: CallbackContext):
-    """Обработчик текстовых сообщений с поддержкой FSM."""
     text = update.message.text.strip()
     state = context.user_data.get('state', 'idle')
     actions = {
@@ -1091,6 +1090,7 @@ async def handle_text(update: Update, context: CallbackContext):
         await handle_capsule_selection(update, context)
     else:
         await update.message.reply_text(t('create_capsule_first'))
+
 
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
     """Обработчик ввода пользовательской даты отправки."""
