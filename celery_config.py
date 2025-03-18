@@ -1,7 +1,6 @@
 import os
 from celery import Celery
 
-
 # Настройка Celery с использованием REDIS_URL от Railway
 app = Celery('tasks', broker=os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
 
