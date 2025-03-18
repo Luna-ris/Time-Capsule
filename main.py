@@ -1234,6 +1234,9 @@ def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> date
         utc_time = local_time.astimezone(pytz.utc)
         logger.info(f"Конвертация времени: {local_time_str} (местное) -> {utc_time} (UTC)")
         return utc_time
+    except ValueError as ve:
+        logger.error(f"Ошибка формата даты в convert_to_utc: {ve}")
+        raise
     except Exception as e:
         logger.error(f"Ошибка конвертации времени: {e}")
         raise
