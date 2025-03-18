@@ -1158,6 +1158,15 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     encrypted = encrypt_data_aes(json_str, ENCRYPTION_KEY_BYTES)
     update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
+
+def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> datetime:
+    """Конвертация местного времени в UTC."""
+    local_tz = pytz.timezone(timezone)
+    local_time = datetime.strptime(local_time_str, "%d.%m.%Y %H:%M:%S")
+    local_time = local_tz.localize(local_time)
+    utc_time = local_time.astimezone(pytz.utc)
+    return utc_time
+
 async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
     """Сохранение даты отправки капсулы."""
     try:
@@ -1192,7 +1201,6 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(t('error_general'))
         else:
             await update.callback_query.edit_message_text(t('error_general'))
-
 
 
 async def post_init(application: Application):
