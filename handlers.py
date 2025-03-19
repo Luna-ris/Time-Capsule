@@ -4,10 +4,7 @@ from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKe
 from telegram.ext import CallbackContext
 from config import logger
 from localization import t, LOCALE
-from database import (
-    fetch_data, post_data, add_user, create_capsule, add_recipient,
-    get_user_capsules, get_capsule_recipients, delete_capsule, edit_capsule,
-    generate_unique_capsule_number  # Исправлен импорт
+from database import fetch_data, post_data, add_user, create_capsule, add_recipient, get_user_capsules, get_capsule_recipients, delete_capsule, edit_capsule, get_chat_id
 )
 from utils import check_capsule_ownership, save_capsule_content, convert_to_utc
 import pytz
