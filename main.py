@@ -2,7 +2,7 @@ import subprocess
 import time
 import sys
 import nest_asyncio
-from telegram import Update  # Импортируем Update из telegram
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, filters,
     CallbackQueryHandler
@@ -29,7 +29,13 @@ def start_process(command: str, name: str) -> bool:
             stderr=subprocess.PIPE
         )
         logger.info(f"Процесс {name} запущен с PID {process.pid}")
-        return True
+        # Читаем первые строки вывода для проверки
+        stdout, stderr = process.communicate(timeout=10)
+        if stdout:
+            logger.info(f"Вывод {name}: {stdout.decode().strip()}")
+        if stderr:
+            logger.error(f"Ошибка {name}: {stderr.decode().strip()}")
+        return process.returncode == 0 or process.poll() is None
     except Exception as e:
         logger.error(f"Ошибка при запуске процесса {name}: {e}")
         return False
@@ -79,14 +85,17 @@ def main():
         application.post_init = post_init
         
         # Проверка прав бота с небольшой задержкой
-        application.job_queue.run_once(check_bot_permissions, 2)  # Задержка 2 секунды
+        application.job_queue.run_once(check_bot_permissions, 2)
 
         # Запуск бота
-        logger.info("Запуск бота...")
+    logger.info("Запуск бота...")
+    try:
         application.run_polling()
     except Exception as e:
-        logger.error(f"Критическая ошибка при запуске бота: {e}")
-        sys.exit(1)
+        logger.error(f"Ошибка в run_polling: {e}")
+        raise  # Поднимем исключение для логирования
+    finally:
+        logger.info("Бот завершил работу")
 
 if __name__ == "__main__":
     main()
