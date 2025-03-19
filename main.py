@@ -88,12 +88,11 @@ def main():
         application.job_queue.run_once(check_bot_permissions, 2)
 
         # Запуск бота
-    logger.info("Запуск бота...")
-    try:
+        logger.info("Запуск бота...")
         application.run_polling()
     except Exception as e:
-        logger.error(f"Ошибка в run_polling: {e}")
-        raise  # Поднимем исключение для логирования
+        logger.error(f"Критическая ошибка при запуске бота: {e}")
+        sys.exit(1)
     finally:
         logger.info("Бот завершил работу")
 
