@@ -84,19 +84,29 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             else:
                 await update.callback_query.edit_message_text(t('error_general'))
             return
-        send_date = send_date.astimezone(pytz.utc)
-        edit_capsule(capsule_id, scheduled_at=send_date)  # Используем импортированную функцию
+
+        # Преобразуем локальное время пользователя в UTC
+        local_tz = pytz.timezone('Europe/Moscow')  # Указываем временную зону пользователя
+        localized_send_date = local_tz.localize(send_date.replace(tzinfo=None))  # Локализуем дату
+        send_date_utc = localized_send_date.astimezone(pytz.utc)  # Конвертируем в UTC
+
+        # Обновляем дату отправки в базе данных
+        edit_capsule(capsule_id, scheduled_at=send_date_utc)
+
+        # Планируем задачу Celery
         celery_app.send_task(
             'main.send_capsule_task',
             args=[capsule_id],
-            eta=send_date
+            eta=send_date_utc
         )
-        logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
-        message_text = t('date_set', date=send_date.astimezone(pytz.timezone('Europe/Moscow')).strftime('%d.%m.%Y %H:%M'))
+
+        logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date_utc}")
+        message_text = t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M'))  # Отображаем локальное время
         if is_message:
             await update.message.reply_text(message_text)
         else:
             await update.callback_query.edit_message_text(message_text)
+
         context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
