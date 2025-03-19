@@ -85,7 +85,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
                 await update.callback_query.edit_message_text(t('error_general'))
             return
         send_date = send_date.astimezone(pytz.utc)
-        database.edit_capsule(capsule_id, scheduled_at=send_date)
+        edit_capsule(capsule_id, scheduled_at=send_date)  # Используем импортированную функцию
         celery_app.send_task(
             'main.send_capsule_task',
             args=[capsule_id],
