@@ -1,9 +1,14 @@
-# utils.py
 from datetime import datetime
 from telegram.ext import Application, CallbackContext
 from telegram import Update
 from config import logger, celery_app
-from database import fetch_data, edit_capsule, delete_capsule, generate_unique_capsule_number
+from database import (
+    fetch_data,
+    create_capsule,
+    edit_capsule,
+    delete_capsule,
+    generate_unique_capsule_number  # Добавлен импорт
+)
 from localization import t
 import pytz
 
