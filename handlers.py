@@ -6,11 +6,15 @@ from typing import Optional
 
 import pytz
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CommandHandler, MessageHandler, filters, CallbackQueryHandler, CallbackContext, ApplicationBuilder
-from database import fetch_data, post_data, update_data, delete_data
+from telegram.ext import CommandHandler, MessageHandler, filters, CallbackQueryHandler, CallbackContext, Application
+from database import fetch_data, post_data, update_data
 from encryption import encrypt_data_aes, decrypt_data_aes
 from config import TELEGRAM_TOKEN, ENCRYPTION_KEY_BYTES
-from utils import t, generate_unique_capsule_number, convert_to_utc, check_capsule_ownership, save_capsule_content
+from utils import (
+    t, generate_unique_capsule_number, convert_to_utc, check_capsule_ownership,
+    save_capsule_content, add_user, create_capsule, add_recipient, delete_capsule,
+    edit_capsule, get_user_capsules, get_capsule_recipients
+)
 from tasks import celery_app
 
 logger = logging.getLogger(__name__)
@@ -51,16 +55,10 @@ async def create_capsule_command(update: Update, context: CallbackContext):
     """Обработчик команды /create_capsule."""
     try:
         user = update.message.from_user
-        existing_user = fetch_data("users", {"telegram_id": user.id})
-        if not existing_user:
-            response = post_data("users", {
-                "telegram_id": user.id,
-                "username": user.username or str(user.id),
-                "chat_id": update.message.chat_id
-            })
-            creator_id = response[0]['id']
-        else:
-            creator_id = existing_user[0]['id']
+        creator_id = add_user(user.username or str(user.id), user.id, update.message.chat_id)
+        if creator_id == -1:
+            await update.message.reply_text(t('service_unavailable'))
+            return
         initial_content = json.dumps({
             "text": [],
             "photos": [],
@@ -157,6 +155,7 @@ async def change_language(update: Update, context: CallbackContext):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(t('select_language'), reply_markup=reply_markup)
 
+# Обработчики callback-запросов
 async def handle_language_selection(update: Update, context: CallbackContext):
     """Обработчик выбора языка."""
     global LOCALE
@@ -207,10 +206,10 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
     elif action == "delete_capsule":
         await update.message.reply_text(
             t('confirm_delete'),
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Да", callback_data="confirm_delete"),
-                 InlineKeyboardButton("Нет", callback_data="cancel_delete")]
-            ])
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("Да", callback_data="confirm_delete"),
+                InlineKeyboardButton("Нет", callback_data="cancel_delete")
+            ]])
         )
     elif action == "edit_capsule":
         await update.message.reply_text(t('enter_new_content'))
@@ -449,3 +448,63 @@ async def handle_sticker(update: Update, context: CallbackContext):
 async def handle_voice(update: Update, context: CallbackContext):
     """Обработчик добавления голосового сообщения."""
     await handle_media(update, context, "voices", "voice")
+
+async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
+    """Сохранение даты отправки капсулы."""
+    try:
+        capsule_id = context.user_data.get('selected_capsule_id')
+        if not capsule_id:
+            if is_message:
+                await update.message.reply_text(t('error_general'))
+            else:
+                await update.callback_query.edit_message_text(t('error_general'))
+            return
+        send_date = send_date.astimezone(pytz.utc)
+        edit_capsule(capsule_id, scheduled_at=send_date)
+        celery_app.send_task(
+            'main.send_capsule_task',
+            args=[capsule_id],
+            eta=send_date
+        )
+        logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
+        message_text = t('date_set', date=send_date.astimezone(pytz.timezone('Europe/Moscow')).strftime('%d.%m.%Y %H:%M'))
+        if is_message:
+            await update.message.reply_text(message_text)
+        else:
+            await update.callback_query.edit_message_text(message_text)
+        context.user_data['state'] = "idle"
+    except Exception as e:
+        logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
+        if is_message:
+            await update.message.reply_text(t('error_general'))
+        else:
+            await update.callback_query.edit_message_text(t('error_general'))
+
+async def post_init(application: Application):
+    """Инициализация задач после запуска бота."""
+    logger.info("Начало инициализации задач")
+    try:
+        capsules = fetch_data("capsules")
+        logger.info(f"Найдено {len(capsules)} капсул в базе данных")
+        now = datetime.now(pytz.utc)
+        logger.info(f"Текущее время UTC: {now}")
+        for capsule in capsules:
+            if capsule.get('scheduled_at'):
+                scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
+                logger.info(f"Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
+                if scheduled_at > now:
+                    logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
+                    celery_app.send_task(
+                        'main.send_capsule_task',
+                        args=[capsule['id']],
+                        eta=scheduled_at
+                    )
+                    logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
+        logger.info("Инициализация задач завершена")
+    except Exception as e:
+        logger.error(f"Не удалось инициализировать задачи: {e}")
+
+def get_chat_id(username: str) -> Optional[int]:
+    """Получение chat_id по имени пользователя."""
+    response = fetch_data("users", {"username": username})
+    return response[0]['chat_id'] if response else None
