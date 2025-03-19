@@ -17,30 +17,30 @@ from handlers import (
 )
 from utils import post_init, check_bot_permissions
 
+# Обработчик ошибок
+async def error_handler(update: object, context: CallbackContext) -> None:
+    """Обработчик ошибок для Telegram бота."""
+    logger.error(f"Произошла ошибка: {context.error}")
+    
+    # Если ошибка связана с конкретным обновлением (например, сообщением), отправляем уведомление пользователю
+    if update and hasattr(update, 'message'):
+        try:
+            await update.message.reply_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова позже.")
+        except TelegramError as e:
+            logger.error(f"Не удалось отправить сообщение об ошибке пользователю: {e}")
+
 def main():
     """Основная функция запуска бота."""
     try:
         nest_asyncio.apply()
         start_services()
-        app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
-
-        # Регистрация обработчика ошибок
-        app.add_error_handler(error_handler)
-
-        # Регистрация остальных обработчиков...
-        app.run_polling(allowed_updates=Update.ALL_TYPES)
-    except Exception as e:
-        logger.error(f"Критическая ошибка при запуске бота: {e}")
-        sys.exit(1)
-
-        nest_asyncio.apply()
-
-        # Запуск сервисов (Celery)
-        start_services()
 
         # Создание приложения Telegram
         logger.info("Инициализация приложения Telegram...")
         app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+
+        # Регистрация обработчика ошибок
+        app.add_error_handler(error_handler)
 
         # Регистрация обработчиков команд
         logger.info("Регистрация обработчиков команд...")
