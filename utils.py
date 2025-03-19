@@ -101,7 +101,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
         )
 
         logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date_utc}")
-        message_text = t('date_set', date=send_date.strftime('%d.%m.%Y %H:%M'))  # Отображаем локальное время
+        message_text = t('date_set', date=localized_send_date.strftime('%d.%m.%Y %H:%M'))  # Отображаем локальное время
         if is_message:
             await update.message.reply_text(message_text)
         else:
