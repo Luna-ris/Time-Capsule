@@ -1,4 +1,5 @@
 import sys
+import os
 import nest_asyncio
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
@@ -18,7 +19,7 @@ def main():
     """Основная функция запуска бота."""
     try:
         nest_asyncio.apply()
-        
+
         # Запуск сервисов (Celery)
         start_services()
 
@@ -58,7 +59,13 @@ def main():
 
         # Запуск бота
         logger.info("Запуск бота...")
-        app.run_polling(allowed_updates=Update.ALL_TYPES)
+        PORT = int(os.environ.get('PORT', '8443'))
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=TELEGRAM_TOKEN,
+            webhook_url=f"https://{YOUR_DOMAIN}/{TELEGRAM_TOKEN}"
+        )
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске бота: {e}")
         sys.exit(1)
