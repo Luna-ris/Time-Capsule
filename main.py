@@ -1,11 +1,15 @@
 import sys
 import nest_asyncio
 from telegram import Update
-from telegram.error import TelegramError
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    CallbackQueryHandler,
+    CallbackContext  # Добавлен импорт
 )
-from config import TELEGRAM_TOKEN, logger, start_services
+from config import TELEGRAM_TOKEN, logger, celery_app, start_services
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command,
     view_capsules_command, send_capsule_command, delete_capsule_command,
