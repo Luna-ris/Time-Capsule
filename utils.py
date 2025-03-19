@@ -42,7 +42,7 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     content = context.user_data.get('capsule_content', {})
     json_str = json.dumps(content, ensure_ascii=False)
     encrypted = encrypt_data_aes(json_str)
-    database.update_data("capsules", {"id": capsule_id}, {"content": encrypted})
+    update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
 def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> datetime:
     """Конвертация местного времени в UTC."""
