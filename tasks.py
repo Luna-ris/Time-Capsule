@@ -111,6 +111,6 @@ def send_capsule_task(capsule_id: int):
 
     asyncio.run(send_async())
 
-def post_init(application):
+async def post_init(application):
     """Функция для инициализации приложения."""
     pass
