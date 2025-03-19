@@ -8,7 +8,8 @@ from database import (
     create_capsule,
     edit_capsule,
     delete_capsule,
-    generate_unique_capsule_number  # Добавлен импорт
+    generate_unique_capsule_number,
+    update_data
 )
 from localization import t
 import pytz
