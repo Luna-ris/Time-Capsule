@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-from database import generate_unique_capsule_number
 from dotenv import load_dotenv
 from supabase import create_client
 from celery import Celery
