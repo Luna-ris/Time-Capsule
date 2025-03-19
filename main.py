@@ -1,6 +1,7 @@
 import sys
 import nest_asyncio
 from telegram import Update
+from telegram.error import TelegramError
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 )
@@ -19,10 +20,18 @@ from utils import post_init, check_bot_permissions
 def main():
     """Основная функция запуска бота."""
     try:
-        # Загрузка переменных окружения
-        if not TELEGRAM_TOKEN:
-            logger.error("Переменная TELEGRAM_TOKEN не задана.")
-            sys.exit(1)
+        nest_asyncio.apply()
+        start_services()
+        app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+
+        # Регистрация обработчика ошибок
+        app.add_error_handler(error_handler)
+
+        # Регистрация остальных обработчиков...
+        app.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception as e:
+        logger.error(f"Критическая ошибка при запуске бота: {e}")
+        sys.exit(1)
 
         nest_asyncio.apply()
 
