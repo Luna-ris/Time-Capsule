@@ -1,13 +1,7 @@
 import sys
 import nest_asyncio
-from telegram import Update  # Импортируем Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    filters,
-    CallbackQueryHandler,
-)
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from config import TELEGRAM_TOKEN, logger, celery_app, start_services
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command,
@@ -29,6 +23,13 @@ def main():
         
         # Создание приложения Telegram
         app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+        
+        # Удаление вебхука перед запуском бота
+        async def delete_webhook_and_start():
+            await app.bot.delete_webhook()
+            logger.info("Вебхук успешно удален.")
+        
+        app.post_stop(delete_webhook_and_start)
         
         # Регистрация обработчиков команд
         app.add_handler(CommandHandler("start", start))
@@ -63,7 +64,7 @@ def main():
         
         # Запуск бота
         logger.info("Запуск бота...")
-        app.run_polling(allowed_updates=Update.ALL_TYPES)  # Используем импортированный Update
+        app.run_polling(allowed_updates=Update.ALL_TYPES)
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске бота: {e}")
         sys.exit(1)
