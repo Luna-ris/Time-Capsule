@@ -1,6 +1,6 @@
+from typing import Optional, List
 from config import supabase, logger
 from datetime import datetime
-from typing import Optional, List
 
 def fetch_data(table: str, query: dict = {}) -> list:
     """Получение данных из Supabase."""
