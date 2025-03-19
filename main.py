@@ -1,6 +1,13 @@
 import sys
 import nest_asyncio
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+from telegram import Update  # Импортируем Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    CallbackQueryHandler,
+)
 from config import TELEGRAM_TOKEN, logger, celery_app, start_services
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command,
@@ -56,7 +63,7 @@ def main():
         
         # Запуск бота
         logger.info("Запуск бота...")
-        app.run_polling(allowed_updates=Update.ALL_TYPES)
+        app.run_polling(allowed_updates=Update.ALL_TYPES)  # Используем импортированный Update
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске бота: {e}")
         sys.exit(1)
