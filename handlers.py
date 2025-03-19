@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 from config import logger
+from capsule_job import send_capsule_job
 from localization import t, LOCALE
 from database import (
     fetch_data, post_data, add_user, create_capsule, add_recipient,
