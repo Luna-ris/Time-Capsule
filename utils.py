@@ -33,7 +33,7 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     """Сохранение содержимого капсулы."""
     from crypto import encrypt_data_aes
     content = context.user_data.get('capsule_content', {})
-    json_str = json.dumps(content, ensure_ascii=False)
+    json_str = json.dumps(content, ensure_ascii=False)  # Теперь json определен
     encrypted = encrypt_data_aes(json_str)
     database.update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
