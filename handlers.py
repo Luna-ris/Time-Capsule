@@ -8,7 +8,7 @@ from localization import t, LOCALE
 from database import (
     fetch_data, post_data, add_user, create_capsule, add_recipient,
     get_user_capsules, get_capsule_recipients, delete_capsule, edit_capsule,
-    generate_unique_capsule_number
+    generate_unique_capsule_number, update_data
 )
 from utils import check_capsule_ownership, save_capsule_content, convert_to_utc, save_send_date
 import pytz
