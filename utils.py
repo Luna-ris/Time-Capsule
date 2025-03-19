@@ -7,6 +7,7 @@ import pytz
 from database import fetch_data, post_data, update_data, delete_data
 from encryption import encrypt_data_aes, decrypt_data_aes
 from config import ENCRYPTION_KEY_BYTES
+from telegram import Update
 
 logger = logging.getLogger(__name__)
 
@@ -589,3 +590,10 @@ async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -
             await update.message.reply_text(t('not_your_capsule'))
         return False
     return True
+
+def save_capsule_content(context: CallbackContext, capsule_id: int):
+    """Сохранение содержимого капсулы."""
+    content = context.user_data.get('capsule_content', {})
+    json_str = json.dumps(content, ensure_ascii=False)
+    encrypted = encrypt_data_aes(json_str, ENCRYPTION_KEY_BYTES)
+    update_data("capsules", {"id": capsule_id}, {"content": encrypted})
