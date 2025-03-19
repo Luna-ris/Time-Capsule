@@ -29,7 +29,8 @@ def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     decryptor = cipher.decryptor()
     decrypted = decryptor.update(encrypted) + decryptor.finalize()
     unpadder = padding.PKCS7(128).unpadder()
-    return unpadder.update(decrypted) + unpadder.finalize().decode('utf-8')
+    unpadded = unpadder.update(decrypted) + unpadder.finalize()
+    return unpadded.decode('utf-8')
 
 def fetch_data(table: str, query: dict = {}):
     """Получение данных из Supabase."""
