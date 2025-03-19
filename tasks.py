@@ -110,3 +110,7 @@ def send_capsule_task(capsule_id: int):
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
     asyncio.run(send_async())
+
+def post_init(application):
+    """Функция для инициализации приложения."""
+    pass
