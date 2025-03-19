@@ -57,7 +57,6 @@ async def post_init(application: Application):
             if capsule.get('scheduled_at'):
                 scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
                 logger.info(f"Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
-
                 if scheduled_at > now:
                     logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
                     celery_app.send_task(
@@ -66,11 +65,19 @@ async def post_init(application: Application):
                         eta=scheduled_at
                     )
                     logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
+                else:
+                    logger.info(f"Капсула {capsule['id']} просрочена (scheduled_at: {scheduled_at})")
+            else:
+                logger.info(f"Капсула {capsule['id']} не имеет scheduled_at")
         logger.info("Инициализация задач завершена")
     except Exception as e:
         logger.error(f"Не удалось инициализировать задачи: {e}")
 
 async def check_bot_permissions(context: CallbackContext):
     """Проверка прав бота."""
-    me = await context.bot.get_me()
-    logger.info(f"Бот запущен как @{me.username}")
+    try:
+        me = await context.bot.get_me()
+        logger.info(f"Бот запущен как @{me.username}")
+        logger.info("Проверка прав бота завершена")
+    except Exception as e:
+        logger.error(f"Ошибка при проверке прав бота: {e}")
