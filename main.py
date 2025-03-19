@@ -1,7 +1,7 @@
 import logging
 import nest_asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
-from telegram import Update  # Добавьте этот импорт
+from telegram import Update
 from config import TELEGRAM_TOKEN
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command, view_capsules_command,
@@ -12,6 +12,7 @@ from handlers import (
     handle_photo, handle_media, handle_video, handle_audio, handle_document, handle_sticker, handle_voice
 )
 from tasks import post_init
+from celery_config import celery_app
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -48,4 +49,7 @@ app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
 if __name__ == "__main__":
     nest_asyncio.apply()
+    # Запуск бота
     app.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Запуск Celery воркера (должен быть в отдельном процессе, здесь для примера)
+    # В реальном проекте используйте команду: celery -A celery_config worker --loglevel=info
