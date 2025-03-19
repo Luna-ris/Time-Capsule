@@ -1,11 +1,14 @@
-import json
-from datetime import datetime
-import pytz
+from datetime import datetime, timedelta
+from telegram.ext import Application, CallbackContext
 from telegram import Update
-from telegram.ext import CallbackContext, Application
-from config import logger
-from localization import t
+from config import logger, celery_app
 from database import fetch_data
+from localization import t
+import pytz
+
+CREATING_CAPSULE = "creating_capsule"
+SELECTING_CAPSULE = "selecting_capsule"
+SELECTING_CAPSULE_FOR_RECIPIENTS = "selecting_capsule_for_recipients"
 
 async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -> bool:
     """Проверка владения капсулой."""
@@ -27,12 +30,11 @@ async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -
 
 def save_capsule_content(context: CallbackContext, capsule_id: int):
     """Сохранение содержимого капсулы."""
+    from crypto import encrypt_data_aes
     content = context.user_data.get('capsule_content', {})
     json_str = json.dumps(content, ensure_ascii=False)
-    from crypto import encrypt_data_aes
     encrypted = encrypt_data_aes(json_str)
-    from database import update_data
-    update_data("capsules", {"id": capsule_id}, {"content": encrypted})
+    database.update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
 def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> datetime:
     """Конвертация местного времени в UTC."""
@@ -52,7 +54,6 @@ async def post_init(application: Application):
         now = datetime.now(pytz.utc)
         logger.info(f"Текущее время UTC: {now}")
 
-        from config import celery_app
         for capsule in capsules:
             if capsule.get('scheduled_at'):
                 scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
@@ -60,24 +61,47 @@ async def post_init(application: Application):
                 if scheduled_at > now:
                     logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
                     celery_app.send_task(
-                        'tasks.send_capsule_task',
+                        'main.send_capsule_task',
                         args=[capsule['id']],
                         eta=scheduled_at
                     )
                     logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
-                else:
-                    logger.info(f"Капсула {capsule['id']} просрочена (scheduled_at: {scheduled_at})")
-            else:
-                logger.info(f"Капсула {capsule['id']} не имеет scheduled_at")
         logger.info("Инициализация задач завершена")
     except Exception as e:
         logger.error(f"Не удалось инициализировать задачи: {e}")
 
 async def check_bot_permissions(context: CallbackContext):
     """Проверка прав бота."""
+    me = await context.bot.get_me()
+    logger.info(f"Бот запущен как @{me.username}")
+
+async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
+    """Сохранение даты отправки капсулы."""
     try:
-        me = await context.bot.get_me()
-        logger.info(f"Бот запущен как @{me.username}")
-        logger.info("Проверка прав бота завершена")
+        capsule_id = context.user_data.get('selected_capsule_id')
+        if not capsule_id:
+            if is_message:
+                await update.message.reply_text(t('error_general'))
+            else:
+                await update.callback_query.edit_message_text(t('error_general'))
+            return
+        send_date = send_date.astimezone(pytz.utc)
+        database.edit_capsule(capsule_id, scheduled_at=send_date)
+        celery_app.send_task(
+            'main.send_capsule_task',
+            args=[capsule_id],
+            eta=send_date
+        )
+        logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
+        message_text = t('date_set', date=send_date.astimezone(pytz.timezone('Europe/Moscow')).strftime('%d.%m.%Y %H:%M'))
+        if is_message:
+            await update.message.reply_text(message_text)
+        else:
+            await update.callback_query.edit_message_text(message_text)
+        context.user_data['state'] = "idle"
     except Exception as e:
-        logger.error(f"Ошибка при проверке прав бота: {e}")
+        logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
+        if is_message:
+            await update.message.reply_text(t('error_general'))
+        else:
+            await update.callback_query.edit_message_text(t('error_general'))
