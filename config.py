@@ -1,9 +1,8 @@
 import os
 import sys
 import logging
-from dotenv import load_dotenv
 from celery import Celery
-from supabase import create_client
+from dotenv import load_dotenv
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -23,9 +22,6 @@ if not all([TELEGRAM_TOKEN, ENCRYPTION_KEY, SUPABASE_URL, SUPABASE_KEY]):
 
 ENCRYPTION_KEY_BYTES = ENCRYPTION_KEY.encode('utf-8').ljust(32)[:32]
 
-# Инициализация Supabase
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
 # Настройка Celery
 celery_app = Celery('tasks', broker=os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
 celery_app.conf.task_serializer = 'json'
@@ -33,3 +29,13 @@ celery_app.conf.result_serializer = 'json'
 celery_app.conf.accept_content = ['json']
 celery_app.conf.timezone = 'UTC'
 celery_app.conf.broker_connection_retry_on_startup = True
+
+# Функция запуска сервисов
+def start_services():
+    """Запуск необходимых сервисов."""
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        logger.error("Переменная REDIS_URL не задана.")
+        sys.exit(1)
+    
+    logger.info("Сервисы успешно запущены.")
