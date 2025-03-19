@@ -504,14 +504,17 @@ def generate_unique_capsule_number(creator_id: int) -> int:
     """Генерация уникального номера капсулы для пользователя."""
     return len(fetch_data("capsules", {"creator_id": creator_id})) + 1
 
-def add_user(username: str, telegram_id: int, chat_id: int):
-    """Добавление пользователя в базу данных."""
-    if not fetch_data("users", {"telegram_id": telegram_id}):
-        post_data("users", {
+def add_user(username: str, telegram_id: int, chat_id: int) -> int:
+    """Добавление пользователя в базу данных и возврат его ID."""
+    existing_user = fetch_data("users", {"telegram_id": telegram_id})
+    if not existing_user:
+        response = post_data("users", {
             "telegram_id": telegram_id,
             "username": username,
             "chat_id": chat_id
         })
+        return response[0]['id'] if response else -1
+    return existing_user[0]['id']
 
 def create_capsule(
     creator_id: int,
