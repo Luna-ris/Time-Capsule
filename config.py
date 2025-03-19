@@ -1,7 +1,6 @@
 import os
 import sys
 import logging
-from database import edit_capsule, delete_capsule
 from dotenv import load_dotenv
 from supabase import create_client
 from celery import Celery
