@@ -5,6 +5,7 @@ import subprocess
 import time
 from dotenv import load_dotenv
 from celery import Celery
+from supabase import create_client
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -16,6 +17,9 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+# Инициализация Supabase
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 if not all([TELEGRAM_TOKEN, ENCRYPTION_KEY, SUPABASE_URL, SUPABASE_KEY]):
     logger.error("Не все обязательные переменные окружения заданы.")
