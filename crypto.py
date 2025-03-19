@@ -14,11 +14,11 @@ def encrypt_data_aes(data: str) -> str:
     encrypted = encryptor.update(padded_data) + encryptor.finalize()
     return (iv + encrypted).hex()
 
-def decrypt_data_aes(encrypted_hex: str) -> str:
+def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     """Дешифрование данных с помощью AES."""
     data = bytes.fromhex(encrypted_hex)
     iv, encrypted = data[:16], data[16:]
-    cipher = Cipher(algorithms.AES(ENCRYPTION_KEY_BYTES), modes.CBC(iv), backend=default_backend())
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
     decryptor = cipher.decryptor()
     decrypted = decryptor.update(encrypted) + decryptor.finalize()
     unpadder = padding.PKCS7(128).unpadder()
