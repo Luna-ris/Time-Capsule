@@ -1,15 +1,11 @@
-import json 
+# utils.py
 from datetime import datetime, timedelta
 from telegram.ext import Application, CallbackContext
 from telegram import Update
 from config import logger, celery_app
 from database import fetch_data
 from localization import t
-from utils import (
-    check_capsule_ownership, save_capsule_content, convert_to_utc, save_send_date
-)
 import pytz
-import database
 
 CREATING_CAPSULE = "creating_capsule"
 SELECTING_CAPSULE = "selecting_capsule"
@@ -37,7 +33,7 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     """Сохранение содержимого капсулы."""
     from crypto import encrypt_data_aes
     content = context.user_data.get('capsule_content', {})
-    json_str = json.dumps(content, ensure_ascii=False)  # Теперь json определен
+    json_str = json.dumps(content, ensure_ascii=False)
     encrypted = encrypt_data_aes(json_str)
     database.update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
@@ -55,10 +51,8 @@ async def post_init(application: Application):
     try:
         capsules = fetch_data("capsules")
         logger.info(f"Найдено {len(capsules)} капсул в базе данных")
-
         now = datetime.now(pytz.utc)
         logger.info(f"Текущее время UTC: {now}")
-
         for capsule in capsules:
             if capsule.get('scheduled_at'):
                 scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
