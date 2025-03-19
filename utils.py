@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from telegram.ext import Application, CallbackContext
 from telegram import Update
 from config import logger, celery_app
-from database import fetch_data
+from database import fetch_data, edit_capsule, delete_capsule
 from localization import t
 import pytz
 
