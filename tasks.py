@@ -15,45 +15,53 @@ def send_capsule_task(capsule_id: int):
     async def send_async():
         try:
             logger.info(f"Начинаю отправку капсулы {capsule_id}")
-            
-            # Получаем данные капсулы из базы данных
             capsule = fetch_data("capsules", {"id": capsule_id})
             if not capsule:
                 logger.error(f"Капсула {capsule_id} не найдена")
                 return
 
-            # Расшифровываем содержимое капсулы
             content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
             recipients = get_capsule_recipients(capsule_id)
             if not recipients:
                 logger.error(f"Нет получателей для капсулы {capsule_id}")
                 return
 
-            # Создаем экземпляр бота
-            bot = Bot(token=TELEGRAM_TOKEN)
+            bot = Application.builder().token(TELEGRAM_TOKEN).build()
+            await bot.initialize()
 
-            # Отправляем капсулу каждому получателю
+            creator = fetch_data("users", {"id": capsule[0]['creator_id']})
+            sender_username = creator[0]['username'] if creator else "Unknown"
+
             for recipient in recipients:
                 chat_id = get_chat_id(recipient['recipient_username'])
                 if chat_id:
-                    await bot.send_message(chat_id=chat_id, text=t('capsule_received', sender=capsule[0]['creator_username']))
-                    
-                    # Отправляем содержимое капсулы
-                    for item_type in ['text', 'stickers', 'photos', 'documents', 'voices', 'videos', 'audios']:
-                        for item in content.get(item_type, []):
-                            send_method = getattr(bot, f"send_{item_type[:-1]}")
-                            await send_method(chat_id, item)
-                    
+                    await bot.bot.send_message(
+                        chat_id=chat_id,
+                        text=t('capsule_received', sender=sender_username)
+                    )
+                    for item in content.get('text', []):
+                        await bot.bot.send_message(chat_id, item)
+                    for item in content.get('stickers', []):
+                        await bot.bot.send_sticker(chat_id, item)
+                    for item in content.get('photos', []):
+                        await bot.bot.send_photo(chat_id, item)
+                    for item in content.get('documents', []):
+                        await bot.bot.send_document(chat_id, item)
+                    for item in content.get('voices', []):
+                        await bot.bot.send_voice(chat_id, item)
+                    for item in content.get('videos', []):
+                        await bot.bot.send_video(chat_id, item)
+                    for item in content.get('audios', []):
+                        await bot.bot.send_audio(chat_id, item)
                     logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
                 else:
                     logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
-
-            # Удаляем капсулу после отправки
             logger.info(f"Капсула {capsule_id} успешно отправлена")
             delete_capsule(capsule_id)
-        
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
+
+    asyncio.run(send_async())
 
     # Запускаем асинхронную задачу
     asyncio.run(send_async())
