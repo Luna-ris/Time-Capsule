@@ -1,5 +1,5 @@
 # utils.py
-from datetime import datetime, timedelta
+from datetime import datetime
 from telegram.ext import Application, CallbackContext
 from telegram import Update
 from config import logger, celery_app
