@@ -6,6 +6,7 @@ from config import logger, celery_app
 from database import fetch_data
 from localization import t
 import pytz
+import database
 
 CREATING_CAPSULE = "creating_capsule"
 SELECTING_CAPSULE = "selecting_capsule"
