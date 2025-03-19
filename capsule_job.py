@@ -11,6 +11,7 @@ from telegram import Update
 from telegram.ext import CallbackContext
 import os
 
+
 # Загрузка переменных окружения
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -21,6 +22,7 @@ ENCRYPTION_KEY_BYTES = bytes.fromhex(ENCRYPTION_KEY)
 # Инициализация Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
 def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     """Дешифрование данных с помощью AES."""
     data = bytes.fromhex(encrypted_hex)
@@ -29,8 +31,8 @@ def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
     decryptor = cipher.decryptor()
     decrypted = decryptor.update(encrypted) + decryptor.finalize()
     unpadder = padding.PKCS7(128).unpadder()
-    unpadded = unpadder.update(decrypted) + unpadder.finalize()
-    return unpadded.decode('utf-8')
+    return unpadder.update(decrypted) + unpadder.finalize().decode('utf-8')
+
 
 def fetch_data(table: str, query: dict = {}):
     """Получение данных из Supabase."""
@@ -39,14 +41,17 @@ def fetch_data(table: str, query: dict = {}):
         response = response.eq(key, value)
     return response.execute().data
 
+
 def get_capsule_recipients(capsule_id: int):
     """Получение списка получателей капсулы."""
     return fetch_data("recipients", {"capsule_id": capsule_id})
+
 
 def get_chat_id(username: str):
     """Получение chat_id по имени пользователя."""
     response = fetch_data("users", {"username": username})
     return response[0]['chat_id'] if response else None
+
 
 async def send_capsule_job(application, capsule_id: int, update: Update):
     """Отправка капсулы всем получателям."""
