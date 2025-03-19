@@ -1,6 +1,6 @@
 import logging
 import nest_asyncio
-from telegram.ext import ApplicationBuilder
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from config import TELEGRAM_TOKEN
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command, view_capsules_command,
