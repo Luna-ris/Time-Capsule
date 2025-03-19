@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import List, Optional
 
 import pytz
-from celery import Celery
+from celery_config import celery_app
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
@@ -22,20 +22,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Инициализация Celery
-celery_app = Celery('tasks', broker=REDIS_URL)
-celery_app.conf.task_serializer = 'json'
-celery_app.conf.result_serializer = 'json'
-celery_app.conf.accept_content = ['json']
-celery_app.conf.timezone = 'Europe/Moscow'
-celery_app.conf.broker_connection_retry_on_startup = True
-
 # Инициализация Supabase
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def fetch_data(table: str, query: dict = {}) -> List[dict]:
     """Получение данных из Supabase."""
     response = supabase.table(table).select("*")
+    for key, value in query.items():
+        response = response.eq(key, value)
+    return response.execute().data
+
+def delete_data(table: str, query: dict) -> List[dict]:
+    """Удаление данных из Supabase."""
+    response = supabase.table(table).delete()
     for key, value in query.items():
         response = response.eq(key, value)
     return response.execute().data
@@ -58,6 +57,11 @@ def get_chat_id(username: str) -> Optional[int]:
     """Получение chat_id по имени пользователя."""
     response = fetch_data("users", {"username": username})
     return response[0]['chat_id'] if response else None
+
+def delete_capsule(capsule_id: int):
+    """Удаление капсулы и связанных данных."""
+    delete_data("recipients", {"capsule_id": capsule_id})
+    delete_data("capsules", {"id": capsule_id})
 
 @celery_app.task(name='main.send_capsule_task')
 def send_capsule_task(capsule_id: int):
@@ -85,7 +89,7 @@ def send_capsule_task(capsule_id: int):
                 if chat_id:
                     await bot.send_message(
                         chat_id=chat_id,
-                        text=t('capsule_received', sender=sender_username)
+                        text=f"🎉 Вы получили капсулу времени от @{sender_username}!\nВот её содержимое:"
                     )
                     for item in content.get('text', []):
                         await bot.send_message(chat_id, item)
