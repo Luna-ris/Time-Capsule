@@ -19,11 +19,8 @@ def main():
     """Основная функция запуска бота."""
     try:
         nest_asyncio.apply()
-
-        # Запуск сервисов (Celery)
         start_services()
 
-        # Создание приложения Telegram
         app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
 
         # Регистрация обработчиков команд
@@ -64,7 +61,7 @@ def main():
             listen="0.0.0.0",
             port=PORT,
             url_path=TELEGRAM_TOKEN,
-            webhook_url=f"https://{YOUR_DOMAIN}/{TELEGRAM_TOKEN}"
+            webhook_url=f"https://{os.environ['DOMAIN']}/{TELEGRAM_TOKEN}"
         )
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске бота: {e}")
