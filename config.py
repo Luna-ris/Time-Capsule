@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import database 
 from dotenv import load_dotenv
 from supabase import create_client
 from celery import Celery
