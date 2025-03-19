@@ -1,16 +1,15 @@
 import json
-import pytz
 from datetime import datetime, timedelta
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 from config import logger
-from localization import t
-from utils import check_capsule_ownership, save_capsule_content, convert_to_utc
+from localization import t, LOCALE
 from database import (
     fetch_data, post_data, add_user, create_capsule, add_recipient,
     get_user_capsules, get_capsule_recipients, delete_capsule, edit_capsule
 )
-
+from utils import check_capsule_ownership, save_capsule_content, convert_to_utc, generate_unique_capsule_number  # Добавлен импорт
+import pytz
 
 CREATING_CAPSULE = "creating_capsule"
 SELECTING_CAPSULE = "selecting_capsule"
@@ -30,7 +29,6 @@ async def start(update: Update, context: CallbackContext):
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(t('start_message'), reply_markup=reply_markup)
-
 async def help_command(update: Update, context: CallbackContext):
     """Обработчик команды /help."""
     keyboard = [
@@ -58,15 +56,19 @@ async def create_capsule_command(update: Update, context: CallbackContext):
             creator_id = response[0]['id']
         else:
             creator_id = existing_user[0]['id']
+        
         initial_content = json.dumps({
             "text": [], "photos": [], "videos": [], "audios": [],
             "documents": [], "stickers": [], "voices": []
         }, ensure_ascii=False)
-        user_capsule_number = generate_unique_capsule_number(creator_id)
+        
+        user_capsule_number = generate_unique_capsule_number(creator_id)  # Теперь работает
         capsule_id = create_capsule(creator_id, "Без названия", initial_content, user_capsule_number)
+        
         if capsule_id == -1:
             await update.message.reply_text(t('service_unavailable'))
             return
+        
         context.user_data['current_capsule'] = capsule_id
         context.user_data['capsule_content'] = json.loads(initial_content)
         context.user_data['state'] = CREATING_CAPSULE
