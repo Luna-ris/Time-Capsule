@@ -1,15 +1,16 @@
 import json
+import pytz
 from datetime import datetime, timedelta
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 from config import logger
-from localization import t, LOCALE
+from localization import t
+from utils import check_capsule_ownership, save_capsule_content, convert_to_utc
 from database import (
     fetch_data, post_data, add_user, create_capsule, add_recipient,
     get_user_capsules, get_capsule_recipients, delete_capsule, edit_capsule
 )
-from utils import check_capsule_ownership, save_capsule_content, convert_to_utc
-import pytz
+
 
 CREATING_CAPSULE = "creating_capsule"
 SELECTING_CAPSULE = "selecting_capsule"
