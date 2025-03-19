@@ -341,7 +341,7 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
         from crypto import decrypt_data_aes
         content = json.loads(decrypt_data_aes(capsule[0]['content']))
         for recipient in recipients:
-            chat_id = get_chat_id(recipient['recipient_username'])
+            chat_id = get_chat_id(recipient['recipient_username'])  # Используем импортированную функцию
             if chat_id:
                 await context.bot.send_message(
                     chat_id=chat_id,
