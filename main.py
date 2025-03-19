@@ -30,7 +30,7 @@ async def error_handler(update: object, context: CallbackContext) -> None:
     if update and hasattr(update, 'message'):
         try:
             await update.message.reply_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова позже.")
-        except TelegramError as e:
+        except Exception as e:
             logger.error(f"Не удалось отправить сообщение об ошибке пользователю: {e}")
 
 def main():
