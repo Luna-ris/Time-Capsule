@@ -14,7 +14,7 @@ def send_capsule_task(capsule_id: int):
     """Задача Celery для отправки капсулы."""
     async def send_async():
         try:
-            logger.info(f"Начинаю отправку капсулы {capsule_id}")
+            logger.info(f"Запуск задачи send_capsule_task для капсулы {capsule_id}")
             capsule = fetch_data("capsules", {"id": capsule_id})
             if not capsule:
                 logger.error(f"Капсула {capsule_id} не найдена")
@@ -58,6 +58,7 @@ def send_capsule_task(capsule_id: int):
                     logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
             logger.info(f"Капсула {capsule_id} успешно отправлена")
             delete_capsule(capsule_id)
+            await bot.shutdown()
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
