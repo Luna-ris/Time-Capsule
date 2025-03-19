@@ -1,8 +1,6 @@
 from typing import Optional, List
-from datetime import datetime
-import pytz
 from config import supabase, logger
-from crypto import encrypt_data_aes, decrypt_data_aes
+from datetime import datetime
 
 def fetch_data(table: str, query: dict = {}) -> list:
     """Получение данных из Supabase."""
@@ -74,6 +72,7 @@ def create_capsule(
     scheduled_at: Optional[datetime] = None
 ) -> int:
     """Создание новой капсулы."""
+    from crypto import encrypt_data_aes
     encrypted_content = encrypt_data_aes(content)
     data = {
         "creator_id": creator_id,
@@ -82,7 +81,7 @@ def create_capsule(
         "user_capsule_number": user_capsule_number
     }
     if scheduled_at:
-        data["scheduled_at"] = scheduled_at.astimezone(pytz.utc).isoformat()
+        data["scheduled_at"] = scheduled_at.isoformat()
     response = post_data("capsules", data)
     return response[0]['id'] if response else -1
 
@@ -100,13 +99,14 @@ def delete_capsule(capsule_id: int):
 
 def edit_capsule(capsule_id: int, title: Optional[str] = None, content: Optional[str] = None, scheduled_at: Optional[datetime] = None):
     """Редактирование капсулы."""
+    from crypto import encrypt_data_aes
     data = {}
     if title:
         data["title"] = title
     if content:
         data["content"] = encrypt_data_aes(content)
     if scheduled_at:
-        data["scheduled_at"] = scheduled_at.astimezone(pytz.utc).isoformat()
+        data["scheduled_at"] = scheduled_at.isoformat()
     if data:
         update_data("capsules", {"id": capsule_id}, data)
 
