@@ -1,9 +1,9 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 import pytz
-from config import logger, TELEGRAM_TOKEN, ENCRYPTION_KEY_BYTES, celery_app
+from config import logger, TELEGRAM_TOKEN
 from localization import t
 from database import fetch_data, get_capsule_recipients, get_chat_id, delete_capsule
 from crypto import decrypt_data_aes
@@ -11,55 +11,37 @@ from telegram.ext import Application
 
 @celery_app.task(name='tasks.send_capsule_task')
 def send_capsule_task(capsule_id: int):
-    """Задача Celery для отправки капсулы."""
     async def send_async():
         try:
-            logger.info(f"Запуск задачи send_capsule_task для капсулы {capsule_id}")
             capsule = fetch_data("capsules", {"id": capsule_id})
             if not capsule:
                 logger.error(f"Капсула {capsule_id} не найдена")
                 return
-
+            
             content = json.loads(decrypt_data_aes(capsule[0]['content']))
             recipients = get_capsule_recipients(capsule_id)
             if not recipients:
                 logger.error(f"Нет получателей для капсулы {capsule_id}")
                 return
-
-            bot = Application.builder().token(TELEGRAM_TOKEN).build()
-            await bot.initialize()
-
-            creator = fetch_data("users", {"id": capsule[0]['creator_id']})
-            sender_username = creator[0]['username'] if creator else "Unknown"
-
+            
+            application = Application.builder().token(TELEGRAM_TOKEN).build()
+            await application.initialize()
+            
             for recipient in recipients:
                 chat_id = get_chat_id(recipient['recipient_username'])
                 if chat_id:
-                    await bot.bot.send_message(
-                        chat_id=chat_id,
-                        text=t('capsule_received', sender=sender_username)
-                    )
-                    for item in content.get('text', []):
-                        await bot.bot.send_message(chat_id, item)
-                    for item in content.get('stickers', []):
-                        await bot.bot.send_sticker(chat_id, item)
-                    for item in content.get('photos', []):
-                        await bot.bot.send_photo(chat_id, item)
-                    for item in content.get('documents', []):
-                        await bot.bot.send_document(chat_id, item)
-                    for item in content.get('voices', []):
-                        await bot.bot.send_voice(chat_id, item)
-                    for item in content.get('videos', []):
-                        await bot.bot.send_video(chat_id, item)
-                    for item in content.get('audios', []):
-                        await bot.bot.send_audio(chat_id, item)
-                    logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
-                else:
-                    logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
-            logger.info(f"Капсула {capsule_id} успешно отправлена")
+                    bot = application.bot
+                    await bot.send_message(chat_id=chat_id, text=t('capsule_received'))
+                    
+                    for item_type in ['text', 'stickers', 'photos', 'documents', 
+                                     'voices', 'videos', 'audios']:
+                        for item in content.get(item_type, []):
+                            send_method = getattr(bot, f"send_{item_type[:-1]}")
+                            await send_method(chat_id, item)
+            
             delete_capsule(capsule_id)
-            await bot.shutdown()
+            await application.shutdown()
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
-
+    
     asyncio.run(send_async())
