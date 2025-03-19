@@ -27,7 +27,7 @@ async def start(update: Update, context: CallbackContext):
         [t("select_send_date_btn"), t("support_author_btn")],
         [t("change_language_btn")]
     ]
-    reply_markup = ReplyKeyboard KnowlesMarkup(keyboard, resize_keyboard=True)
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(t('start_message'), reply_markup=reply_markup)
 
 async def help_command(update: Update, context: CallbackContext):
@@ -61,7 +61,7 @@ async def create_capsule_command(update: Update, context: CallbackContext):
             "text": [], "photos": [], "videos": [], "audios": [],
             "documents": [], "stickers": [], "voices": []
         }, ensure_ascii=False)
-        user_capsule_number = database.generate_unique_capsule_number(creator_id)
+        user_capsule_number = generate_unique_capsule_number(creator_id)
         capsule_id = create_capsule(creator_id, "Без названия", initial_content, user_capsule_number)
         if capsule_id == -1:
             await update.message.reply_text(t('service_unavailable'))
@@ -340,7 +340,7 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
         from crypto import decrypt_data_aes
         content = json.loads(decrypt_data_aes(capsule[0]['content']))
         for recipient in recipients:
-            chat_id = database.get_chat_id(recipient['recipient_username'])
+            chat_id = get_chat_id(recipient['recipient_username'])
             if chat_id:
                 await context.bot.send_message(
                     chat_id=chat_id,
