@@ -1,9 +1,10 @@
+import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.backends import default_backend
 from config import ENCRYPTION_KEY_BYTES
 
-def encrypt_data_aes(data: str, key: bytes) -> str:
+def encrypt_data_aes(data: str, key: bytes = ENCRYPTION_KEY_BYTES) -> str:
     """Шифрование данных с помощью AES."""
     iv = os.urandom(16)
     cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
@@ -13,7 +14,7 @@ def encrypt_data_aes(data: str, key: bytes) -> str:
     encrypted = encryptor.update(padded_data) + encryptor.finalize()
     return (iv + encrypted).hex()
 
-def decrypt_data_aes(encrypted_hex: str, key: bytes) -> str:
+def decrypt_data_aes(encrypted_hex: str, key: bytes = ENCRYPTION_KEY_BYTES) -> str:
     """Дешифрование данных с помощью AES."""
     data = bytes.fromhex(encrypted_hex)
     iv, encrypted = data[:16], data[16:]
