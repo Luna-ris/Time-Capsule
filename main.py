@@ -1,8 +1,10 @@
 import sys
 import nest_asyncio
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
-from config import TELEGRAM_TOKEN, logger, celery_app, start_services
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+)
+from config import TELEGRAM_TOKEN, logger, start_services
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command,
     view_capsules_command, send_capsule_command, delete_capsule_command,
@@ -17,21 +19,22 @@ from utils import post_init, check_bot_permissions
 def main():
     """Основная функция запуска бота."""
     try:
+        # Загрузка переменных окружения
+        if not TELEGRAM_TOKEN:
+            logger.error("Переменная TELEGRAM_TOKEN не задана.")
+            sys.exit(1)
+
         nest_asyncio.apply()
+
         # Запуск сервисов (Celery)
         start_services()
-        
+
         # Создание приложения Telegram
+        logger.info("Инициализация приложения Telegram...")
         app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
-        
-        # Удаление вебхука перед запуском бота
-        async def delete_webhook_and_start():
-            await app.bot.delete_webhook()
-            logger.info("Вебхук успешно удален.")
-        
-        app.post_stop(delete_webhook_and_start)
-        
+
         # Регистрация обработчиков команд
+        logger.info("Регистрация обработчиков команд...")
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("help", help_command))
         app.add_handler(CommandHandler("create_capsule", create_capsule_command))
@@ -44,12 +47,12 @@ def main():
         app.add_handler(CommandHandler("select_send_date", select_send_date))
         app.add_handler(CommandHandler("support_author", support_author))
         app.add_handler(CommandHandler("change_language", change_language))
-        
+
         # Регистрация обработчиков callback-запросов
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
         app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
-        
+
         # Регистрация обработчиков сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
         app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
@@ -58,10 +61,10 @@ def main():
         app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
         app.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
         app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-        
+
         # Проверка прав бота с небольшой задержкой
         app.job_queue.run_once(check_bot_permissions, 2)
-        
+
         # Запуск бота
         logger.info("Запуск бота...")
         app.run_polling(allowed_updates=Update.ALL_TYPES)
