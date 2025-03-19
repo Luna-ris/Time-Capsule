@@ -1,13 +1,8 @@
-import subprocess
-import time
 import sys
 import nest_asyncio
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler, filters,
-    CallbackQueryHandler
-)
-from config import TELEGRAM_TOKEN, logger, celery_app
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, CallbackQueryHandler
+from config import TELEGRAM_TOKEN, logger, celery_app, start_services
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command,
     view_capsules_command, send_capsule_command, delete_capsule_command,
@@ -19,82 +14,54 @@ from handlers import (
 )
 from utils import post_init, check_bot_permissions
 
-def start_process(command: str, name: str) -> bool:
-    """Запуск процесса с логированием."""
-    try:
-        process = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-        logger.info(f"Процесс {name} запущен с PID {process.pid}")
-        # Читаем первые строки вывода для проверки
-        stdout, stderr = process.communicate(timeout=10)
-        if stdout:
-            logger.info(f"Вывод {name}: {stdout.decode().strip()}")
-        if stderr:
-            logger.error(f"Ошибка {name}: {stderr.decode().strip()}")
-        return process.returncode == 0 or process.poll() is None
-    except Exception as e:
-        logger.error(f"Ошибка при запуске процесса {name}: {e}")
-        return False
-
 def main():
     """Основная функция запуска бота."""
     try:
         nest_asyncio.apply()
         
-        # Запуск Celery worker в отдельном процессе
-        if not start_process("celery -A config.celery_app worker --loglevel=info", "Celery Worker"):
-            logger.error("Не удалось запустить Celery Worker")
-            sys.exit(1)
+        # Запуск сервисов (Celery)
+        start_services()
 
         # Создание приложения Telegram
-        application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+        app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
 
-        # Регистрация обработчиков
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("help", help_command))
-        application.add_handler(CommandHandler("create_capsule", create_capsule_command))
-        application.add_handler(CommandHandler("add_recipient", add_recipient_command))
-        application.add_handler(CommandHandler("view_capsules", view_capsules_command))
-        application.add_handler(CommandHandler("send_capsule", send_capsule_command))
-        application.add_handler(CommandHandler("delete_capsule", delete_capsule_command))
-        application.add_handler(CommandHandler("edit_capsule", edit_capsule_command))
-        application.add_handler(CommandHandler("view_recipients", view_recipients_command))
-        application.add_handler(CommandHandler("select_send_date", select_send_date))
-        application.add_handler(CommandHandler("support_author", support_author))
-        application.add_handler(CommandHandler("change_language", change_language))
-        
-        # Обработчики сообщений
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-        application.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-        application.add_handler(MessageHandler(filters.VIDEO, handle_video))
-        application.add_handler(MessageHandler(filters.AUDIO, handle_audio))
-        application.add_handler(MessageHandler(filters.Document.ALL, handle_document))
-        application.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
-        application.add_handler(MessageHandler(filters.VOICE, handle_voice))
-        
-        # Обработчики callback-запросов
-        application.add_handler(CallbackQueryHandler(handle_language_selection, pattern="^(ru|en|es|fr|de)$"))
-        application.add_handler(CallbackQueryHandler(handle_date_buttons, pattern="^(week|month|custom)$"))
-        application.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern="^(confirm_delete|cancel_delete)$"))
+        # Регистрация обработчиков команд
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("help", help_command))
+        app.add_handler(CommandHandler("create_capsule", create_capsule_command))
+        app.add_handler(CommandHandler("add_recipient", add_recipient_command))
+        app.add_handler(CommandHandler("view_capsules", view_capsules_command))
+        app.add_handler(CommandHandler("send_capsule", send_capsule_command))
+        app.add_handler(CommandHandler("delete_capsule", delete_capsule_command))
+        app.add_handler(CommandHandler("edit_capsule", edit_capsule_command))
+        app.add_handler(CommandHandler("view_recipients", view_recipients_command))
+        app.add_handler(CommandHandler("select_send_date", select_send_date))
+        app.add_handler(CommandHandler("support_author", support_author))
+        app.add_handler(CommandHandler("change_language", change_language))
 
-        # Пост-инициализация
-        application.post_init = post_init
-        
+        # Регистрация обработчиков callback-запросов
+        app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
+        app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
+        app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
+
+        # Регистрация обработчиков сообщений
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+        app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+        app.add_handler(MessageHandler(filters.VIDEO, handle_video))
+        app.add_handler(MessageHandler(filters.AUDIO, handle_audio))
+        app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
+        app.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
+        app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+
         # Проверка прав бота с небольшой задержкой
-        application.job_queue.run_once(check_bot_permissions, 2)
+        app.job_queue.run_once(check_bot_permissions, 2)
 
         # Запуск бота
         logger.info("Запуск бота...")
-        application.run_polling()
+        app.run_polling(allowed_updates=Update.ALL_TYPES)
     except Exception as e:
         logger.error(f"Критическая ошибка при запуске бота: {e}")
         sys.exit(1)
-    finally:
-        logger.info("Бот завершил работу")
 
 if __name__ == "__main__":
     main()
