@@ -2,9 +2,10 @@ import subprocess
 import time
 import sys
 import nest_asyncio
+from telegram import Update  # Импортируем Update из telegram
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, filters,
-    CallbackQueryHandler, Update
+    CallbackQueryHandler
 )
 from config import TELEGRAM_TOKEN, logger, celery_app
 from handlers import (
@@ -26,14 +27,13 @@ def start_process(command: str, name: str) -> bool:
             shell=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
-        )  # Здесь была незакрытая скобка
+        )
         logger.info(f"Процесс {name} запущен с PID {process.pid}")
         return True
     except Exception as e:
         logger.error(f"Ошибка при запуске процесса {name}: {e}")
         return False
 
-# Остальной код main.py
 def main():
     """Основная функция запуска бота."""
     nest_asyncio.apply()
