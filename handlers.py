@@ -1,16 +1,19 @@
 import json
 from datetime import datetime, timedelta
-import pytz
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
-from config import logger, CREATING_CAPSULE, SELECTING_CAPSULE, SELECTING_CAPSULE_FOR_RECIPIENTS, celery_app
+from config import logger
 from localization import t, LOCALE
 from database import (
-    add_user, create_capsule, get_user_capsules, get_capsule_recipients,
-    add_recipient, delete_capsule, edit_capsule, fetch_data, get_chat_id
+    fetch_data, post_data, add_user, create_capsule, add_recipient,
+    get_user_capsules, get_capsule_recipients, delete_capsule, edit_capsule
 )
-from crypto import decrypt_data_aes
 from utils import check_capsule_ownership, save_capsule_content, convert_to_utc
+import pytz
+
+CREATING_CAPSULE = "creating_capsule"
+SELECTING_CAPSULE = "selecting_capsule"
+SELECTING_CAPSULE_FOR_RECIPIENTS = "selecting_capsule_for_recipients"
 
 async def start(update: Update, context: CallbackContext):
     """Обработчик команды /start."""
@@ -24,7 +27,7 @@ async def start(update: Update, context: CallbackContext):
         [t("select_send_date_btn"), t("support_author_btn")],
         [t("change_language_btn")]
     ]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    reply_markup = ReplyKeyboard KnowlesMarkup(keyboard, resize_keyboard=True)
     await update.message.reply_text(t('start_message'), reply_markup=reply_markup)
 
 async def help_command(update: Update, context: CallbackContext):
@@ -46,24 +49,19 @@ async def create_capsule_command(update: Update, context: CallbackContext):
         user = update.message.from_user
         existing_user = fetch_data("users", {"telegram_id": user.id})
         if not existing_user:
-            response = fetch_data("users", {
+            response = post_data("users", {
                 "telegram_id": user.id,
                 "username": user.username or str(user.id),
                 "chat_id": update.message.chat_id
             })
-            creator_id = response[0]['id'] if response else -1
+            creator_id = response[0]['id']
         else:
             creator_id = existing_user[0]['id']
         initial_content = json.dumps({
-            "text": [],
-            "photos": [],
-            "videos": [],
-            "audios": [],
-            "documents": [],
-            "stickers": [],
-            "voices": []
+            "text": [], "photos": [], "videos": [], "audios": [],
+            "documents": [], "stickers": [], "voices": []
         }, ensure_ascii=False)
-        user_capsule_number = len(get_user_capsules(user.id)) + 1
+        user_capsule_number = database.generate_unique_capsule_number(creator_id)
         capsule_id = create_capsule(creator_id, "Без названия", initial_content, user_capsule_number)
         if capsule_id == -1:
             await update.message.reply_text(t('service_unavailable'))
@@ -339,9 +337,10 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
         if not recipients:
             await update.message.reply_text(t('no_recipients'))
             return
+        from crypto import decrypt_data_aes
         content = json.loads(decrypt_data_aes(capsule[0]['content']))
         for recipient in recipients:
-            chat_id = get_chat_id(recipient['recipient_username'])
+            chat_id = database.get_chat_id(recipient['recipient_username'])
             if chat_id:
                 await context.bot.send_message(
                     chat_id=chat_id,
@@ -442,36 +441,3 @@ async def handle_sticker(update: Update, context: CallbackContext):
 async def handle_voice(update: Update, context: CallbackContext):
     """Обработчик добавления голосового сообщения."""
     await handle_media(update, context, "voices", "voice")
-
-async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
-    """Сохранение даты отправки капсулы."""
-    try:
-        capsule_id = context.user_data.get('selected_capsule_id')
-        if not capsule_id:
-            if is_message:
-                await update.message.reply_text(t('error_general'))
-            else:
-                await update.callback_query.edit_message_text(t('error_general'))
-            return
-
-        send_date = send_date.astimezone(pytz.utc)
-        edit_capsule(capsule_id, scheduled_at=send_date)
-        celery_app.send_task(
-            'tasks.send_capsule_task',
-            args=[capsule_id],
-            eta=send_date
-        )
-        logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
-
-        message_text = t('date_set', date=send_date.astimezone(pytz.timezone('Europe/Moscow')).strftime('%d.%m.%Y %H:%M'))
-        if is_message:
-            await update.message.reply_text(message_text)
-        else:
-            await update.callback_query.edit_message_text(message_text)
-        context.user_data['state'] = "idle"
-    except Exception as e:
-        logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
-        if is_message:
-            await update.message.reply_text(t('error_general'))
-        else:
-            await update.callback_query.edit_message_text(t('error_general'))
