@@ -497,7 +497,6 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
                 await update.callback_query.edit_message_text(t('capsule_sent', recipient=recipient['recipient_username']))
             else:
                 await update.callback_query.edit_message_text(t('recipient_not_registered', recipient=recipient['recipient_username']))
-        delete_capsule(capsule_id)  # Удаляем капсулу после отправки
     except Exception as e:
         logger.error(f"Ошибка при отправке капсулы: {e}")
         await update.callback_query.edit_message_text(t('service_unavailable'))
