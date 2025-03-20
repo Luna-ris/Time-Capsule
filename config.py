@@ -67,5 +67,7 @@ def check_celery_worker():
 def start_services():
     """Запуск необходимых сервисов."""
     check_redis_connection()
+    logger.info("Redis успешно запущен.")
+    # Проверяем Celery Worker только после запуска Redis
     check_celery_worker()
-    logger.info("Все сервисы успешно запущены.")
+    logger.info("Celery Worker успешно запущен.")
