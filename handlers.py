@@ -201,8 +201,11 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
     """Обработчик выбора капсулы через инлайн-меню."""
     query = update.callback_query
     try:
-        # Разделяем callback_data на action и capsule_id
-        action, capsule_id = query.data.split('_', 1)
+        # Разделяем callback_data на части
+        parts = query.data.rsplit('_', 1)  # Разделяем по последнему '_'
+        if len(parts) != 2:
+            raise ValueError("Неверный формат callback_data")
+        action, capsule_id = parts
         capsule_id = int(capsule_id)  # Пытаемся преобразовать capsule_id в число
     except (ValueError, IndexError) as e:
         logger.error(f"Ошибка при разборе callback_data: {query.data}, ошибка: {e}")
