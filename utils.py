@@ -101,6 +101,15 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
         # Убедитесь, что send_date в правильном часовом поясе
         send_date = send_date.astimezone(pytz.utc)
 
+        # Проверка существования капсулы перед отправкой задачи
+        capsule = fetch_data("capsules", {"id": capsule_id})
+        if not capsule:
+            if is_message:
+                await update.message.reply_text(t('invalid_capsule_id'))
+            else:
+                await update.callback_query.edit_message_text(t('invalid_capsule_id'))
+            return
+
         edit_capsule(capsule_id, scheduled_at=send_date)
         celery_app.send_task(
             'main.send_capsule_task',
