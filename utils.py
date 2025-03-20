@@ -95,11 +95,10 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
                 await update.callback_query.edit_message_text(t('error_general'))
             return
 
-        # Конвертация времени в UTC
-        send_date = convert_to_utc(send_date.strftime("%d.%m.%Y %H:%M:%S"), timezone='Europe/Moscow')
-        edit_capsule(capsule_id, scheduled_at=send_date)
+        # Убедитесь, что send_date в правильном часовом поясе
+        send_date = send_date.astimezone(pytz.utc)
 
-        # Отправка задачи в Celery
+        edit_capsule(capsule_id, scheduled_at=send_date)
         celery_app.send_task(
             'main.send_capsule_task',
             args=[capsule_id],
@@ -112,7 +111,6 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(message_text)
         else:
             await update.callback_query.edit_message_text(message_text)
-
         context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
@@ -120,3 +118,4 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(t('error_general'))
         else:
             await update.callback_query.edit_message_text(t('error_general'))
+
