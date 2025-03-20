@@ -11,7 +11,6 @@ from database import (
     generate_unique_capsule_number, update_data, get_chat_id
 )
 from utils import check_capsule_ownership, save_capsule_content, convert_to_utc, save_send_date
-import pytz
 
 # Состояния для пошагового мастера создания капсулы
 CREATING_CAPSULE_TITLE = "creating_capsule_title"
@@ -65,20 +64,23 @@ async def show_capsule_selection(update: Update, context: CallbackContext, actio
 
     # Сортируем капсулы по ID
     capsules = sorted(capsules, key=lambda x: x['id'])
+    logger.info(f"Найдено {len(capsules)} капсул для пользователя {update.effective_user.id}")
 
     # Пагинация: определяем текущую страницу для конкретного действия
     page_key = f"{action}_page"
     page = context.user_data.get(page_key, 1)
     capsules_per_page = 10  # 5 строк по 2 столбца = 10 капсул на страницу
-    total_pages = (len(capsules) + capsules_per_page - 1) // capsules_per_page
+    total Wages = (len(capsules) + capsules_per_page - 1) // capsules_per_page
 
     # Ограничиваем страницу
     page = max(1, min(page, total_pages))
+    logger.info(f"Отображение страницы {page} из {total_pages} для действия {action}")
 
     # Выбираем капсулы для текущей страницы
     start_idx = (page - 1) * capsules_per_page
     end_idx = start_idx + capsules_per_page
     current_capsules = capsules[start_idx:end_idx]
+    logger.info(f"Выбраны капсулы с индекса {start_idx} по {end_idx}: {len(current_capsules)} капсул")
 
     # Создаем кнопки в 2 столбца
     keyboard = []
@@ -261,58 +263,60 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
     logger.info(f"handle_inline_selection вызвана с callback_data: {query.data}")
     try:
         # Разделяем callback_data на части
-        parts = query.data.rsplit('_', 1)  # Разделяем по последнему '_'
-        if len(parts) != 2:
+        parts = query.data.split('_')
+        if len(parts) < 2:
             raise ValueError("Неверный формат callback_data")
-        action, value = parts
-        # Проверяем, является ли value числом (для пагинации или выбора капсулы)
-        value = int(value)  # Пытаемся преобразовать value в число
-    except (ValueError, IndexError) as e:
-        logger.error(f"Ошибка при разборе callback_data: {query.data}, ошибка: {e}")
+
+        # Проверяем, является ли это пагинацией (например, select_send_date_page_2)
+        if parts[-2] == "page":
+            action_type = "_".join(parts[:-2])  # Например, select_send_date
+            page_number = int(parts[-1])  # Например, 2
+            context.user_data[f"{action_type}_page"] = page_number
+            logger.info(f"Переход на страницу {page_number} для действия {action_type}")
+            await show_capsule_selection(update, context, action_type)
+            return
+        else:
+            # Обычный выбор капсулы (например, select_send_date_42)
+            action = "_".join(parts[:-1])  # Например, select_send_date
+            value = int(parts[-1])  # Например, 42
+
+        context.user_data['selected_capsule_id'] = value
+
+        if not await check_capsule_ownership(update, value, query):
+            return
+
+        if action == "add_recipient":
+            await query.edit_message_text(t('enter_recipients'))
+            context.user_data['state'] = "adding_recipient"
+        elif action == "send_capsule":
+            await preview_capsule(update, context, value, show_buttons=True)
+        elif action == "delete_capsule":
+            await query.edit_message_text(
+                t('confirm_delete'),
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("Да", callback_data="confirm_delete"),
+                     InlineKeyboardButton("Нет", callback_data="cancel_delete")]
+                ])
+            )
+        elif action == "edit_capsule":
+            await query.edit_message_text(t('enter_new_content'))
+            context.user_data['state'] = "editing_capsule_content"
+        elif action == "view_recipients":
+            await handle_view_recipients_logic(update, context, value)
+        elif action == "select_send_date":
+            keyboard = [
+                [InlineKeyboardButton(t("through_week"), callback_data="week")],
+                [InlineKeyboardButton(t("through_month"), callback_data="month")],
+                [InlineKeyboardButton(t("select_date"), callback_data="custom")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(t('choose_send_date'), reply_markup=reply_markup)
+        elif action == "view":
+            # Показываем содержимое капсулы без кнопок
+            await preview_capsule(update, context, value, show_buttons=False)
+    except Exception as e:
+        logger.error(f"Ошибка в handle_inline_selection: {query.data}, ошибка: {e}")
         await query.edit_message_text("⚠️ Ошибка: Неверный формат данных. Пожалуйста, попробуйте снова.")
-        return
-
-    # Обработка пагинации для всех действий
-    if action.endswith("_page"):
-        action_type = action.replace("_page", "")  # Извлекаем тип действия (например, "view", "add_recipient")
-        context.user_data[f"{action_type}_page"] = value
-        await show_capsule_selection(update, context, action_type)
-        return
-
-    context.user_data['selected_capsule_id'] = value
-
-    if not await check_capsule_ownership(update, value, query):
-        return
-
-    if action == "add_recipient":
-        await query.edit_message_text(t('enter_recipients'))
-        context.user_data['state'] = "adding_recipient"
-    elif action == "send_capsule":
-        await preview_capsule(update, context, value, show_buttons=True)
-    elif action == "delete_capsule":
-        await query.edit_message_text(
-            t('confirm_delete'),
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Да", callback_data="confirm_delete"),
-                 InlineKeyboardButton("Нет", callback_data="cancel_delete")]
-            ])
-        )
-    elif action == "edit_capsule":
-        await query.edit_message_text(t('enter_new_content'))
-        context.user_data['state'] = "editing_capsule_content"
-    elif action == "view_recipients":
-        await handle_view_recipients_logic(update, context, value)
-    elif action == "select_send_date":
-        keyboard = [
-            [InlineKeyboardButton(t("through_week"), callback_data="week")],
-            [InlineKeyboardButton(t("through_month"), callback_data="month")],
-            [InlineKeyboardButton(t("select_date"), callback_data="custom")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(t('choose_send_date'), reply_markup=reply_markup)
-    elif action == "view":
-        # Показываем содержимое капсулы без кнопок
-        await preview_capsule(update, context, value, show_buttons=False)
 
 async def preview_capsule(update: Update, context: CallbackContext, capsule_id: int, show_buttons: bool = True):
     """Предпросмотр капсулы перед отправкой или просмотром."""
