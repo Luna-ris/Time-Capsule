@@ -17,7 +17,8 @@ from handlers import (
     support_author, change_language, handle_language_selection,
     handle_date_buttons, handle_delete_confirmation, handle_text,
     handle_photo, handle_video, handle_audio, handle_document,
-    handle_sticker, handle_voice
+    handle_sticker, handle_voice, handle_finish_creation, handle_confirm_creation,
+    handle_edit_creation
 )
 from utils import post_init, check_bot_permissions
 
@@ -25,7 +26,7 @@ from utils import post_init, check_bot_permissions
 async def error_handler(update: object, context: CallbackContext) -> None:
     """Обработчик ошибок для Telegram бота."""
     logger.error(f"Произошла ошибка: {context.error}")
-    
+
     # Если ошибка связана с конкретным обновлением (например, сообщением), отправляем уведомление пользователю
     if update and hasattr(update, 'message'):
         try:
@@ -65,6 +66,9 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
         app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
+        app.add_handler(CallbackQueryHandler(handle_finish_creation, pattern=r"^(finish_creation)$"))
+        app.add_handler(CallbackQueryHandler(handle_confirm_creation, pattern=r"^(confirm_creation)$"))
+        app.add_handler(CallbackQueryHandler(handle_edit_creation, pattern=r"^(edit_creation)$"))
 
         # Регистрация обработчиков сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
