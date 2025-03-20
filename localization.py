@@ -481,7 +481,7 @@ TRANSLATIONS = {
     }
 }
 
-def t(key: str, **kwargs) -> str:
+def t(key: str, locale: str = 'ru', **kwargs) -> str:
     """Получение перевода по ключу с учетом текущей локали."""
-    translation = TRANSLATIONS.get(LOCALE, TRANSLATIONS['en']).get(key, key)
+    translation = TRANSLATIONS.get(locale, TRANSLATIONS['en']).get(key, key)
     return translation.format(**kwargs) if kwargs else translation
