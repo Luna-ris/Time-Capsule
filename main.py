@@ -69,6 +69,9 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_finish_creation, pattern=r"^(finish_creation)$"))
         app.add_handler(CallbackQueryHandler(handle_confirm_creation, pattern=r"^(confirm_creation)$"))
         app.add_handler(CallbackQueryHandler(handle_edit_creation, pattern=r"^(edit_creation)$"))
+        app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date)_\d+$"))
+        app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
+        app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
 
         # Регистрация обработчиков сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
