@@ -379,7 +379,6 @@ async def handle_create_capsule_recipients(update: Update, context: CallbackCont
         context.user_data['capsule_recipients'] = usernames
         context.user_data['state'] = CREATING_CAPSULE_DATE
         keyboard = [
-            [基本的
             [InlineKeyboardButton(t("through_week"), callback_data="week")],
             [InlineKeyboardButton(t("through_month"), callback_data="month")],
             [InlineKeyboardButton(t("select_date"), callback_data="custom")]
