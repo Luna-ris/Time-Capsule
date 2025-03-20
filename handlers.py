@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 from config import logger, ENCRYPTION_KEY_BYTES
-from capsule_job import send_capsule_job
 from crypto import decrypt_data_aes
 from localization import t, LOCALE
 from database import (
@@ -12,9 +11,12 @@ from database import (
     generate_unique_capsule_number, update_data, get_chat_id
 )
 from utils import check_capsule_ownership, save_capsule_content, convert_to_utc, save_send_date
-import pytz
 
-CREATING_CAPSULE = "creating_capsule"
+# Состояния для пошагового мастера создания капсулы
+CREATING_CAPSULE_TITLE = "creating_capsule_title"
+CREATING_CAPSULE_CONTENT = "creating_capsule_content"
+CREATING_CAPSULE_RECIPIENTS = "creating_capsule_recipients"
+CREATING_CAPSULE_DATE = "creating_capsule_date"
 SELECTING_CAPSULE = "selecting_capsule"
 SELECTING_CAPSULE_FOR_RECIPIENTS = "selecting_capsule_for_recipients"
 
@@ -47,50 +49,21 @@ async def help_command(update: Update, context: CallbackContext):
     await update.message.reply_text(t('help_message'), reply_markup=reply_markup)
 
 async def create_capsule_command(update: Update, context: CallbackContext):
-    """Обработчик команды /create_capsule."""
-    try:
-        user = update.message.from_user
-        existing_user = fetch_data("users", {"telegram_id": user.id})
-        if not existing_user:
-            response = post_data("users", {
-                "telegram_id": user.id,
-                "username": user.username or str(user.id),
-                "chat_id": update.message.chat_id
-            })
-            creator_id = response[0]['id']
-        else:
-            creator_id = existing_user[0]['id']
+    """Обработчик команды /create_capsule — начало пошагового мастера."""
+    context.user_data['state'] = CREATING_CAPSULE_TITLE
+    context.user_data['capsule_content'] = {"text": [], "photos": [], "videos": [], "audios": [],
+                                            "documents": [], "stickers": [], "voices": []}
+    await update.message.reply_text("📦 Введите название капсулы:")
 
-        initial_content = json.dumps({
-            "text": [], "photos": [], "videos": [], "audios": [],
-            "documents": [], "stickers": [], "voices": []
-        }, ensure_ascii=False)
-
-        user_capsule_number = generate_unique_capsule_number(creator_id)
-        capsule_id = create_capsule(creator_id, "Без названия", initial_content, user_capsule_number)
-
-        if capsule_id == -1:
-            await update.message.reply_text(t('service_unavailable'))
-            return
-
-        context.user_data['current_capsule'] = capsule_id
-        context.user_data['capsule_content'] = json.loads(initial_content)
-        context.user_data['state'] = CREATING_CAPSULE
-        await update.message.reply_text(t('capsule_created', capsule_id=capsule_id))
-        await update.message.reply_text("Введите название капсулы:")
-    except Exception as e:
-        logger.error(f"Ошибка при создании капсулы: {e}")
-        await update.message.reply_text(t('error_general'))
-
-async def show_capsule_selection(update: Update, context: CallbackContext, action: str) -> bool:
-    """Запрашивает номер капсулы для выполнения действия."""
-    capsules = get_user_capsules(update.message.from_user.id)
+async def show_capsule_selection(update: Update, context: CallbackContext, action: str):
+    """Отображение инлайн-меню для выбора капсулы."""
+    capsules = get_user_capsules(update.effective_user.id)
     if not capsules:
         await update.message.reply_text(t('no_capsules'))
         return False
 
     keyboard = [
-        [InlineKeyboardButton(f"#{c['id']} {c['title']}", callback_data=str(c['id']))]
+        [InlineKeyboardButton(f"#{c['id']}: {c['title']}", callback_data=f"{action}_{c['id']}")]
         for c in capsules
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -145,7 +118,7 @@ async def view_recipients_command(update: Update, context: CallbackContext):
         context.user_data['state'] = "viewing_recipients"
 
 async def select_send_date(update: Update, context: CallbackContext):
-    """Обработчик команды /select_send_date с выбором капсулы."""
+    """Обработчик команды /select_send_date."""
     if await show_capsule_selection(update, context, "select_send_date"):
         context.user_data['state'] = SELECTING_CAPSULE
 
@@ -196,19 +169,21 @@ async def handle_language_selection(update: Update, context: CallbackContext):
         reply_markup=reply_markup
     )
 
-async def handle_capsule_selection(update: Update, context: CallbackContext):
-    """Обработчик выбора капсулы с логикой выбора даты."""
+async def handle_inline_selection(update: Update, context: CallbackContext):
+    """Обработчик выбора капсулы через инлайн-меню."""
     query = update.callback_query
-    capsule_id = int(query.data)
+    action, capsule_id = query.data.split('_', 1)
+    capsule_id = int(capsule_id)
     context.user_data['selected_capsule_id'] = capsule_id
-    action = context.user_data.get('action')
-    if not await check_capsule_ownership(update, capsule_id):
+
+    if not await check_capsule_ownership(update, capsule_id, query):
         return
+
     if action == "add_recipient":
         await query.edit_message_text(t('enter_recipients'))
         context.user_data['state'] = "adding_recipient"
     elif action == "send_capsule":
-        await handle_send_capsule_logic(update, context, capsule_id)
+        await preview_capsule(update, context, capsule_id)
     elif action == "delete_capsule":
         await query.edit_message_text(
             t('confirm_delete'),
@@ -224,12 +199,43 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
         await handle_view_recipients_logic(update, context, capsule_id)
     elif action == "select_send_date":
         keyboard = [
-            [InlineKeyboardButton(t("through_week"), callback_data="week"),
-             InlineKeyboardButton(t("through_month"), callback_data="month")],
+            [InlineKeyboardButton(t("through_week"), callback_data="week")],
+            [InlineKeyboardButton(t("through_month"), callback_data="month")],
             [InlineKeyboardButton(t("select_date"), callback_data="custom")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(t('choose_send_date'), reply_markup=reply_markup)
+
+async def preview_capsule(update: Update, context: CallbackContext, capsule_id: int):
+    """Предпросмотр капсулы перед отправкой."""
+    capsule = fetch_data("capsules", {"id": capsule_id})
+    if not capsule:
+        await update.callback_query.edit_message_text(t('invalid_capsule_id'))
+        return
+
+    content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
+    preview_text = "📦 Предпросмотр капсулы:\n"
+    if content.get('text'):
+        preview_text += f"Текст:\n" + "\n".join(content['text']) + "\n"
+    if content.get('photos'):
+        preview_text += f"Фото: {len(content['photos'])} шт.\n"
+    if content.get('videos'):
+        preview_text += f"Видео: {len(content['videos'])} шт.\n"
+    if content.get('audios'):
+        preview_text += f"Аудио: {len(content['audios'])} шт.\n"
+    if content.get('documents'):
+        preview_text += f"Документы: {len(content['documents'])} шт.\n"
+    if content.get('stickers'):
+        preview_text += f"Стикеры: {len(content['stickers'])} шт.\n"
+    if content.get('voices'):
+        preview_text += f"Голосовые: {len(content['voices'])} шт.\n"
+
+    keyboard = [
+        [InlineKeyboardButton("Отправить", callback_data="confirm_send"),
+         InlineKeyboardButton("Отмена", callback_data="cancel_send")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.callback_query.edit_message_text(preview_text, reply_markup=reply_markup)
 
 async def handle_date_buttons(update: Update, context: CallbackContext):
     """Обработчик кнопок выбора даты отправки."""
@@ -258,8 +264,18 @@ async def handle_delete_confirmation(update: Update, context: CallbackContext):
         await query.edit_message_text(t('delete_canceled'))
     context.user_data['state'] = "idle"
 
+async def handle_send_confirmation(update: Update, context: CallbackContext):
+    """Обработчик подтверждения отправки капсулы."""
+    query = update.callback_query
+    if query.data == "confirm_send":
+        capsule_id = context.user_data.get('selected_capsule_id')
+        await handle_send_capsule_logic(update, context, capsule_id)
+    else:
+        await query.edit_message_text("❌ Отправка отменена.")
+    context.user_data['state'] = "idle"
+
 async def handle_text(update: Update, context: CallbackContext):
-    """Обработчик текстовых сообщений с обработкой пользовательской даты."""
+    """Обработчик текстовых сообщений с пошаговым мастером."""
     text = update.message.text.strip()
     state = context.user_data.get('state', 'idle')
     actions = {
@@ -277,25 +293,76 @@ async def handle_text(update: Update, context: CallbackContext):
     }
     if text in actions:
         await actions[text](update, context)
-    elif state == CREATING_CAPSULE:
-        await handle_create_capsule_steps(update, context, text)
+    elif state == CREATING_CAPSULE_TITLE:
+        await handle_capsule_title(update, context, text)
+    elif state == CREATING_CAPSULE_CONTENT:
+        await handle_create_capsule_content(update, context, text)
+    elif state == CREATING_CAPSULE_RECIPIENTS:
+        await handle_create_capsule_recipients(update, context, text)
     elif state == "adding_recipient":
         await handle_recipient(update, context)
     elif state == "editing_capsule_content":
         await handle_edit_capsule_content(update, context)
     elif state == "entering_custom_date":
         await handle_select_send_date(update, context, text)
-    elif state in [
-        SELECTING_CAPSULE_FOR_RECIPIENTS,
-        "sending_capsule",
-        "deleting_capsule",
-        "editing_capsule",
-        "viewing_recipients",
-        SELECTING_CAPSULE
-    ]:
-        await handle_capsule_selection(update, context)
     else:
         await update.message.reply_text(t('create_capsule_first'))
+
+async def handle_capsule_title(update: Update, context: CallbackContext, title: str):
+    """Обработка названия капсулы."""
+    context.user_data['capsule_title'] = title
+    context.user_data['state'] = CREATING_CAPSULE_CONTENT
+    await update.message.reply_text("📝 Добавьте контент в капсулу (текст, фото, видео и т.д.):")
+
+async def handle_create_capsule_content(update: Update, context: CallbackContext, text: str):
+    """Обработка добавления текстового контента в капсулу."""
+    capsule_content = context.user_data.get('capsule_content', {"text": []})
+    capsule_content['text'].append(text)
+    context.user_data['capsule_content'] = capsule_content
+    keyboard = [
+        [InlineKeyboardButton("Завершить", callback_data="finish_capsule"),
+         InlineKeyboardButton("Добавить ещё", callback_data="add_more")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(t('text_added'), reply_markup=reply_markup)
+
+async def handle_create_capsule_recipients(update: Update, context: CallbackContext, text: str):
+    """Обработка добавления получателей в капсулу."""
+    try:
+        usernames = set(text.strip().split())
+        context.user_data['capsule_recipients'] = usernames
+        context.user_data['state'] = CREATING_CAPSULE_DATE
+        keyboard = [
+            [InlineKeyboardButton(t("through_week"), callback_data="week")],
+            [InlineKeyboardButton(t("through_month"), callback_data="month")],
+            [InlineKeyboardButton(t("select_date"), callback_data="custom")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(t('choose_send_date'), reply_markup=reply_markup)
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении получателей: {e}")
+        await update.message.reply_text(t('error_general'))
+
+async def handle_content_buttons(update: Update, context: CallbackContext):
+    """Обработчик кнопок 'Завершить' и 'Добавить ещё'."""
+    query = update.callback_query
+    if query.data == "finish_capsule":
+        user = update.effective_user
+        existing_user = fetch_data("users", {"telegram_id": user.id})
+        creator_id = existing_user[0]['id'] if existing_user else post_data("users", {
+            "telegram_id": user.id,
+            "username": user.username or str(user.id),
+            "chat_id": update.effective_chat.id
+        })[0]['id']
+
+        content = json.dumps(context.user_data['capsule_content'], ensure_ascii=False)
+        user_capsule_number = generate_unique_capsule_number(creator_id)
+        capsule_id = create_capsule(creator_id, context.user_data['capsule_title'], content, user_capsule_number)
+        context.user_data['current_capsule'] = capsule_id
+        context.user_data['state'] = CREATING_CAPSULE_RECIPIENTS
+        await query.edit_message_text(t('capsule_created', capsule_id=capsule_id) + "\n👥 Укажите получателей (например, @Friend1 @Friend2):")
+    elif query.data == "add_more":
+        await query.edit_message_text("📝 Добавьте ещё контент в капсулу:")
 
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
     """Обработчик ввода пользовательской даты отправки."""
@@ -305,40 +372,31 @@ async def handle_select_send_date(update: Update, context: CallbackContext, text
         now = datetime.now(pytz.utc)
         if send_date_utc <= now:
             await update.message.reply_text(
-                "❌ Ошибка: Укажите дату и время в будущем.\n"
-                "Пример: 17.03.2025 21:12:00"
+                "❌ Ошибка: Укажите дату и время в будущем.\nПример: 17.03.2025 21:12:00"
             )
             return
         await save_send_date(update, context, send_date_utc, is_message=True)
+        if context.user_data.get('state') == CREATING_CAPSULE_DATE:
+            await finalize_capsule_creation(update, context)
     except ValueError:
         await update.message.reply_text(
-            "❌ Неверный формат даты. Используйте формат 'день.месяц.год час:минута:секунда'.\n"
-            "Пример: 17.03.2025 21:12:00"
+            "❌ Неверный формат даты. Используйте формат 'день.месяц.год час:минута:секунда'.\nПример: 17.03.2025 21:12:00"
         )
     except Exception as e:
         logger.error(f"Ошибка при установке даты отправки: {e}")
         await update.message.reply_text(t('error_general'))
 
-async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
-    """Обработчик шагов создания капсулы."""
-    if context.user_data.get('capsule_title'):
-        # Если название уже установлено, добавляем текст
-        capsule_content = context.user_data.get('capsule_content', {"text": []})
-        capsule_content['text'].append(text)
-        context.user_data['capsule_content'] = capsule_content
-        save_capsule_content(context, context.user_data['current_capsule'])
-        await update.message.reply_text(t('text_added'))
-    else:
-        # Устанавливаем название капсулы
-        context.user_data['capsule_title'] = text
-        await update.message.reply_text("Название капсулы установлено. Теперь добавьте текст, фото или видео.")
-
-    keyboard = [
-        [InlineKeyboardButton("Завершить", callback_data="finish_creation"),
-         InlineKeyboardButton("Добавить ещё", callback_data="add_more")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
+async def finalize_capsule_creation(update: Update, context: CallbackContext):
+    """Завершение создания капсулы."""
+    capsule_id = context.user_data['current_capsule']
+    for username in context.user_data.get('capsule_recipients', []):
+        add_recipient(capsule_id, username.lstrip('@'))
+    await update.message.reply_text(t('recipients_added', capsule_id=capsule_id))
+    context.user_data['state'] = "idle"
+    context.user_data.pop('capsule_title', None)
+    context.user_data.pop('capsule_content', None)
+    context.user_data.pop('capsule_recipients', None)
+    context.user_data.pop('current_capsule', None)
 
 async def handle_recipient(update: Update, context: CallbackContext):
     """Обработчик добавления получателей."""
@@ -358,11 +416,11 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
     try:
         capsule = fetch_data("capsules", {"id": capsule_id})
         if not capsule:
-            await update.message.reply_text(t('invalid_capsule_id'))
+            await update.callback_query.edit_message_text(t('invalid_capsule_id'))
             return
         recipients = get_capsule_recipients(capsule_id)
         if not recipients:
-            await update.message.reply_text(t('no_recipients'))
+            await update.callback_query.edit_message_text(t('no_recipients'))
             return
         content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
         for recipient in recipients:
@@ -386,13 +444,13 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
                     await context.bot.send_video(chat_id, item)
                 for item in content.get('audios', []):
                     await context.bot.send_audio(chat_id, item)
-                await update.message.reply_text(t('capsule_sent', recipient=recipient['recipient_username']))
+                await update.callback_query.edit_message_text(t('capsule_sent', recipient=recipient['recipient_username']))
             else:
-                await update.message.reply_text(t('recipient_not_registered', recipient=recipient['recipient_username']))
-        context.user_data['state'] = "idle"
+                await update.callback_query.edit_message_text(t('recipient_not_registered', recipient=recipient['recipient_username']))
+        delete_capsule(capsule_id)  # Удаляем капсулу после отправки
     except Exception as e:
         logger.error(f"Ошибка при отправке капсулы: {e}")
-        await update.message.reply_text(t('service_unavailable'))
+        await update.callback_query.edit_message_text(t('service_unavailable'))
 
 async def handle_edit_capsule_content(update: Update, context: CallbackContext):
     """Обработчик редактирования содержимого капсулы."""
@@ -412,29 +470,33 @@ async def handle_view_recipients_logic(update: Update, context: CallbackContext,
         recipients = get_capsule_recipients(capsule_id)
         if recipients:
             recipient_list = "\n".join([f"@{r['recipient_username']}" for r in recipients])
-            await update.message.reply_text(t('recipients_list', capsule_id=capsule_id, recipients=recipient_list))
+            await update.callback_query.edit_message_text(t('recipients_list', capsule_id=capsule_id, recipients=recipient_list))
         else:
-            await update.message.reply_text(t('no_recipients_for_capsule', capsule_id=capsule_id))
+            await update.callback_query.edit_message_text(t('no_recipients_for_capsule', capsule_id=capsule_id))
         context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при получении получателей: {e}")
-        await update.message.reply_text(t('error_general'))
+        await update.callback_query.edit_message_text(t('error_general'))
 
 async def handle_photo(update: Update, context: CallbackContext):
     """Обработчик добавления фото в капсулу."""
-    if not context.user_data.get('current_capsule'):
+    if context.user_data.get('state') not in [CREATING_CAPSULE_CONTENT]:
         await update.message.reply_text(t('create_capsule_first'))
         return
     capsule_content = context.user_data.get('capsule_content', {"photos": []})
     photo_file_id = (await update.message.photo[-1].get_file()).file_id
     capsule_content.setdefault('photos', []).append(photo_file_id)
     context.user_data['capsule_content'] = capsule_content
-    save_capsule_content(context, context.user_data['current_capsule'])
-    await update.message.reply_text(t('photo_added'))
+    keyboard = [
+        [InlineKeyboardButton("Завершить", callback_data="finish_capsule"),
+         InlineKeyboardButton("Добавить ещё", callback_data="add_more")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(t('photo_added'), reply_markup=reply_markup)
 
 async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str):
     """Обработчик медиафайлов."""
-    if not context.user_data.get('current_capsule'):
+    if context.user_data.get('state') not in [CREATING_CAPSULE_CONTENT]:
         await update.message.reply_text(t('create_capsule_first'))
         return
     capsule_content = context.user_data.get('capsule_content', {media_type: []})
@@ -442,8 +504,12 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         file_id = (await getattr(update.message, file_attr).get_file()).file_id
         capsule_content.setdefault(media_type, []).append(file_id)
         context.user_data['capsule_content'] = capsule_content
-        save_capsule_content(context, context.user_data['current_capsule'])
-        await update.message.reply_text(t(f'{media_type[:-1]}_added'))
+        keyboard = [
+            [InlineKeyboardButton("Завершить", callback_data="finish_capsule"),
+             InlineKeyboardButton("Добавить ещё", callback_data="add_more")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(t(f'{media_type[:-1]}_added'), reply_markup=reply_markup)
     except Exception as e:
         logger.error(f"Ошибка при добавлении {media_type[:-1]}: {e}")
         await update.message.reply_text(t('error_general'))
@@ -467,32 +533,3 @@ async def handle_sticker(update: Update, context: CallbackContext):
 async def handle_voice(update: Update, context: CallbackContext):
     """Обработчик добавления голосового сообщения."""
     await handle_media(update, context, "voices", "voice")
-
-async def handle_finish_creation(update: Update, context: CallbackContext):
-    """Обработчик завершения создания капсулы."""
-    query = update.callback_query
-    capsule_id = context.user_data.get('current_capsule')
-    capsule_content = context.user_data.get('capsule_content')
-    content_preview = "\n".join([f"{key}: {', '.join(value)}" for key, value in capsule_content.items()])
-    await query.edit_message_text(f"Предпросмотр капсулы:\n{content_preview}")
-    keyboard = [
-        [InlineKeyboardButton("Подтвердить", callback_data="confirm_creation"),
-         InlineKeyboardButton("Редактировать", callback_data="edit_creation")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text("Подтвердите содержимое капсулы:", reply_markup=reply_markup)
-
-async def handle_confirm_creation(update: Update, context: CallbackContext):
-    """Обработчик подтверждения создания капсулы."""
-    query = update.callback_query
-    capsule_id = context.user_data.get('current_capsule')
-    capsule_content = context.user_data.get('capsule_content')
-    save_capsule_content(context, capsule_id)
-    await query.edit_message_text(t('capsule_created', capsule_id=capsule_id))
-    context.user_data['state'] = "idle"
-
-async def handle_edit_creation(update: Update, context: CallbackContext):
-    """Обработчик редактирования создания капсулы."""
-    query = update.callback_query
-    await query.edit_message_text("Введите новое содержимое для капсулы:")
-    context.user_data['state'] = "editing_capsule_content"
