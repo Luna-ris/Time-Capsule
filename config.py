@@ -5,11 +5,11 @@ from dotenv import load_dotenv
 from supabase import create_client
 from celery import Celery
 
-# Настройка логирования с поддержкой дополнительных данных
+# Настройка логирования
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s - UserID: %(user_id)s - Command: %(command)s - Message: %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s - UserID: %(user_id)s - Command: %(command)s - MsgContent: %(msg_content)s',
     handlers=[logging.StreamHandler()]
 )
 
@@ -17,7 +17,7 @@ class ContextualFilter(logging.Filter):
     def filter(self, record):
         record.user_id = getattr(record, 'user_id', None)
         record.command = getattr(record, 'command', None)
-        record.message = getattr(record, 'message', None)
+        record.msg_content = getattr(record, 'msg_content', None)  # Изменено с message на msg_content
         return True
 
 logger.addFilter(ContextualFilter())
@@ -51,7 +51,6 @@ celery_app.conf.accept_content = ['json']
 celery_app.conf.timezone = 'UTC'
 celery_app.conf.broker_connection_retry_on_startup = True
 
-# Функция запуска сервисов
 def start_services():
     """Запуск необходимых сервисов."""
     redis_url = os.getenv("REDIS_URL")
