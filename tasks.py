@@ -20,40 +20,35 @@ def send_capsule_task(capsule_id: int):
             if not capsule:
                 logger.error(f"Капсула {capsule_id} не найдена")
                 return
-
             content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
             recipients = get_capsule_recipients(capsule_id)
             if not recipients:
                 logger.error(f"Нет получателей для капсулы {capsule_id}")
                 return
-
-            bot = Application.builder().token(TELEGRAM_TOKEN).build()
-            await bot.initialize()
-
+            bot = Bot(token=TELEGRAM_TOKEN)
             creator = fetch_data("users", {"id": capsule[0]['creator_id']})
             sender_username = creator[0]['username'] if creator else "Unknown"
-
             for recipient in recipients:
                 chat_id = get_chat_id(recipient['recipient_username'])
                 if chat_id:
-                    await bot.bot.send_message(
+                    await bot.send_message(
                         chat_id=chat_id,
                         text=t('capsule_received', sender=sender_username)
                     )
                     for item in content.get('text', []):
-                        await bot.bot.send_message(chat_id, item)
+                        await bot.send_message(chat_id, item)
                     for item in content.get('stickers', []):
-                        await bot.bot.send_sticker(chat_id, item)
+                        await bot.send_sticker(chat_id, item)
                     for item in content.get('photos', []):
-                        await bot.bot.send_photo(chat_id, item)
+                        await bot.send_photo(chat_id, item)
                     for item in content.get('documents', []):
-                        await bot.bot.send_document(chat_id, item)
+                        await bot.send_document(chat_id, item)
                     for item in content.get('voices', []):
-                        await bot.bot.send_voice(chat_id, item)
+                        await bot.send_voice(chat_id, item)
                     for item in content.get('videos', []):
-                        await bot.bot.send_video(chat_id, item)
+                        await bot.send_video(chat_id, item)
                     for item in content.get('audios', []):
-                        await bot.bot.send_audio(chat_id, item)
+                        await bot.send_audio(chat_id, item)
                     logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
                 else:
                     logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
@@ -61,5 +56,4 @@ def send_capsule_task(capsule_id: int):
             delete_capsule(capsule_id)
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
-
     asyncio.run(send_async())
