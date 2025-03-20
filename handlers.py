@@ -224,8 +224,8 @@ async def handle_capsule_selection(update: Update, context: CallbackContext):
         await handle_view_recipients_logic(update, context, capsule_id)
     elif action == "select_send_date":
         keyboard = [
-            [InlineKeyboardButton(t("through_week"), callback_data="week")],
-            [InlineKeyboardButton(t("through_month"), callback_data="month")],
+            [InlineKeyboardButton(t("through_week"), callback_data="week"),
+             InlineKeyboardButton(t("through_month"), callback_data="month")],
             [InlineKeyboardButton(t("select_date"), callback_data="custom")]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -321,14 +321,21 @@ async def handle_select_send_date(update: Update, context: CallbackContext, text
 
 async def handle_create_capsule_steps(update: Update, context: CallbackContext, text: str):
     """Обработчик шагов создания капсулы."""
-    capsule_content = context.user_data.get('capsule_content', {"text": []})
-    capsule_content['text'].append(text)
-    context.user_data['capsule_content'] = capsule_content
-    save_capsule_content(context, context.user_data['current_capsule'])
-    await update.message.reply_text(t('text_added'))
+    if context.user_data.get('capsule_title'):
+        # Если название уже установлено, добавляем текст
+        capsule_content = context.user_data.get('capsule_content', {"text": []})
+        capsule_content['text'].append(text)
+        context.user_data['capsule_content'] = capsule_content
+        save_capsule_content(context, context.user_data['current_capsule'])
+        await update.message.reply_text(t('text_added'))
+    else:
+        # Устанавливаем название капсулы
+        context.user_data['capsule_title'] = text
+        await update.message.reply_text("Название капсулы установлено. Теперь добавьте текст, фото или видео.")
+
     keyboard = [
-        [InlineKeyboardButton("Завершить", callback_data="finish_creation")],
-        [InlineKeyboardButton("Добавить ещё", callback_data="add_more")]
+        [InlineKeyboardButton("Завершить", callback_data="finish_creation"),
+         InlineKeyboardButton("Добавить ещё", callback_data="add_more")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("Выберите действие:", reply_markup=reply_markup)
@@ -469,8 +476,8 @@ async def handle_finish_creation(update: Update, context: CallbackContext):
     content_preview = "\n".join([f"{key}: {', '.join(value)}" for key, value in capsule_content.items()])
     await query.edit_message_text(f"Предпросмотр капсулы:\n{content_preview}")
     keyboard = [
-        [InlineKeyboardButton("Подтвердить", callback_data="confirm_creation")],
-        [InlineKeyboardButton("Редактировать", callback_data="edit_creation")]
+        [InlineKeyboardButton("Подтвердить", callback_data="confirm_creation"),
+         InlineKeyboardButton("Редактировать", callback_data="edit_creation")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text("Подтвердите содержимое капсулы:", reply_markup=reply_markup)
