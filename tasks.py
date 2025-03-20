@@ -52,8 +52,6 @@ def send_capsule_task(capsule_id: int):
                         await bot.bot.send_voice(chat_id, item)
                     for item in content.get('videos', []):
                         await bot.bot.send_video(chat_id, item)
-                    for item in content.get('audios', []):
-                        await bot.bot.send_audio(chat_id, item)
                     logger.info(f"Капсула {capsule_id} отправлена @{recipient['recipient_username']}")
                 else:
                     logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
