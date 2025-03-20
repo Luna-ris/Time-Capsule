@@ -5,10 +5,22 @@ from dotenv import load_dotenv
 from supabase import create_client
 from celery import Celery
 
-
-# Настройка логирования
+# Настройка логирования с поддержкой дополнительных данных
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s - UserID: %(user_id)s - Command: %(command)s - Message: %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+
+class ContextualFilter(logging.Filter):
+    def filter(self, record):
+        record.user_id = getattr(record, 'user_id', None)
+        record.command = getattr(record, 'command', None)
+        record.message = getattr(record, 'message', None)
+        return True
+
+logger.addFilter(ContextualFilter())
 
 # Загрузка переменных окружения
 load_dotenv()
