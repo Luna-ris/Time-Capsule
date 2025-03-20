@@ -92,15 +92,14 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
         capsule_id = context.user_data.get('selected_capsule_id') or context.user_data.get('current_capsule')
         if not capsule_id:
             if is_message:
-                await update.message.reply_text(t('error_general'))
+                await update.message.reply_text(t('error_general', locale=LOCALE))
             else:
-                await update.callback_query.edit_message_text(t('error_general'))
+                await update.callback_query.edit_message_text(t('error_general', locale=LOCALE))
             return
         
         send_date = send_date.astimezone(pytz.utc)
         edit_capsule(capsule_id, scheduled_at=send_date)
         
-        # Проверка существования задачи Celery
         from celery.result import AsyncResult
         task_id = f"send_capsule_task_{capsule_id}"
         existing_task = AsyncResult(task_id, app=celery_app)
@@ -116,7 +115,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             )
             logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
         
-        message_text = t('date_set', date=send_date.astimezone(pytz.timezone('Europe/Moscow')).strftime('%d.%m.%Y %H:%M'))
+        message_text = t('date_set', date=send_date.astimezone(pytz.timezone('Europe/Moscow')).strftime('%d.%m.%Y %H:%M'), locale=LOCALE)
         if is_message:
             await update.message.reply_text(message_text)
         else:
@@ -127,6 +126,6 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
     except Exception as e:
         logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
         if is_message:
-            await update.message.reply_text(t('error_general'))
+            await update.message.reply_text(t('error_general', locale=LOCALE))
         else:
-            await update.callback_query.edit_message_text(t('error_general'))
+            await update.callback_query.edit_message_text(t('error_general', locale=LOCALE))
