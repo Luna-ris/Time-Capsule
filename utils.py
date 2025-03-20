@@ -88,7 +88,6 @@ async def check_bot_permissions(context: CallbackContext):
     logger.info(f"Бот запущен как @{me.username}")
 
 async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
-    """Сохранение даты отправки капсулы."""
     try:
         capsule_id = context.user_data.get('selected_capsule_id') or context.user_data.get('current_capsule')
         if not capsule_id:
@@ -97,21 +96,32 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             else:
                 await update.callback_query.edit_message_text(t('error_general'))
             return
-
+        
         send_date = send_date.astimezone(pytz.utc)
         edit_capsule(capsule_id, scheduled_at=send_date)
-        celery_app.send_task(
-            'main.send_capsule_task',
-            args=[capsule_id],
-            eta=send_date
-        )
-        logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
-
+        
+        # Проверка существования задачи Celery
+        from celery.result import AsyncResult
+        task_id = f"send_capsule_task_{capsule_id}"
+        existing_task = AsyncResult(task_id, app=celery_app)
+        
+        if existing_task.state in ['PENDING', 'STARTED']:
+            logger.info(f"Задача для капсулы {capsule_id} уже существует")
+        else:
+            celery_app.send_task(
+                'main.send_capsule_task',
+                args=[capsule_id],
+                eta=send_date,
+                task_id=task_id
+            )
+            logger.info(f"Задача для капсулы {capsule_id} запланирована на {send_date}")
+        
         message_text = t('date_set', date=send_date.astimezone(pytz.timezone('Europe/Moscow')).strftime('%d.%m.%Y %H:%M'))
         if is_message:
             await update.message.reply_text(message_text)
         else:
             await update.callback_query.edit_message_text(message_text)
+            
         if context.user_data.get('state') != CREATING_CAPSULE_DATE:
             context.user_data['state'] = "idle"
     except Exception as e:
