@@ -61,12 +61,15 @@ async def post_init(application: Application):
     try:
         capsules = fetch_data("capsules")
         logger.info(f"Найдено {len(capsules)} капсул в базе данных")
+
         now = datetime.now(pytz.utc)
         logger.info(f"Текущее время UTC: {now}")
+
         for capsule in capsules:
             if capsule.get('scheduled_at'):
                 scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
                 logger.info(f"Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
+
                 if scheduled_at > now:
                     logger.info(f"Добавление задачи для капсулы {capsule['id']} в Celery")
                     celery_app.send_task(
@@ -78,6 +81,7 @@ async def post_init(application: Application):
         logger.info("Инициализация задач завершена")
     except Exception as e:
         logger.error(f"Не удалось инициализировать задачи: {e}")
+
 
 async def check_bot_permissions(context: CallbackContext):
     """Проверка прав бота."""
