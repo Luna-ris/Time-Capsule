@@ -7,7 +7,7 @@ from telegram.ext import (
     MessageHandler,
     filters,
     CallbackQueryHandler,
-    CallbackContext  # Добавлен импорт
+    CallbackContext
 )
 from config import TELEGRAM_TOKEN, logger, celery_app, start_services
 from handlers import (
@@ -17,8 +17,8 @@ from handlers import (
     support_author, change_language, handle_language_selection,
     handle_date_buttons, handle_delete_confirmation, handle_text,
     handle_photo, handle_video, handle_audio, handle_document,
-    handle_sticker, handle_voice, handle_finish_creation, handle_confirm_creation,
-    handle_edit_creation
+    handle_sticker, handle_voice, handle_inline_selection,
+    handle_content_buttons, handle_send_confirmation
 )
 from utils import post_init, check_bot_permissions
 
@@ -26,8 +26,6 @@ from utils import post_init, check_bot_permissions
 async def error_handler(update: object, context: CallbackContext) -> None:
     """Обработчик ошибок для Telegram бота."""
     logger.error(f"Произошла ошибка: {context.error}")
-
-    # Если ошибка связана с конкретным обновлением (например, сообщением), отправляем уведомление пользователю
     if update and hasattr(update, 'message'):
         try:
             await update.message.reply_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова позже.")
@@ -66,9 +64,6 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
         app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
-        app.add_handler(CallbackQueryHandler(handle_finish_creation, pattern=r"^(finish_creation)$"))
-        app.add_handler(CallbackQueryHandler(handle_confirm_creation, pattern=r"^(confirm_creation)$"))
-        app.add_handler(CallbackQueryHandler(handle_edit_creation, pattern=r"^(edit_creation)$"))
         app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date)_\d+$"))
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
