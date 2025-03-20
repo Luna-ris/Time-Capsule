@@ -13,6 +13,7 @@ from crypto import decrypt_data_aes
 @celery_app.task(name='main.send_capsule_task')
 def send_capsule_task(capsule_id: int):
     """Задача Celery для отправки капсулы."""
+    logger.info(f"Starting send_capsule_task for capsule_id: {capsule_id}")
     async def send_async():
         try:
             logger.info(f"Начинаю отправку капсулы {capsule_id}")
@@ -62,4 +63,3 @@ def send_capsule_task(capsule_id: int):
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
     asyncio.run(send_async())
-
