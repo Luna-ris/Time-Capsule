@@ -70,7 +70,7 @@ async def show_capsule_selection(update: Update, context: CallbackContext, actio
     page_key = f"{action}_page"
     page = context.user_data.get(page_key, 1)
     capsules_per_page = 10  # 5 строк по 2 столбца = 10 капсул на страницу
-    total Wages = (len(capsules) + capsules_per_page - 1) // capsules_per_page
+    total_pages = (len(capsules) + capsules_per_page - 1) // capsules_per_page  # Исправлено: total_pages вместо total Wages
 
     # Ограничиваем страницу
     page = max(1, min(page, total_pages))
