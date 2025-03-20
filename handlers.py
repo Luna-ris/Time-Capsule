@@ -11,7 +11,6 @@ from database import (
     generate_unique_capsule_number, update_data, get_chat_id
 )
 from utils import check_capsule_ownership, save_capsule_content, convert_to_utc, save_send_date
-import pytz
 
 # Состояния для пошагового мастера создания капсулы
 CREATING_CAPSULE_TITLE = "creating_capsule_title"
@@ -87,41 +86,50 @@ async def add_recipient_command(update: Update, context: CallbackContext):
         context.user_data['state'] = SELECTING_CAPSULE_FOR_RECIPIENTS
 
 async def view_capsules_command(update: Update, context: CallbackContext):
-    """Обработчик команды /view_capsules с улучшенным отображением."""
+    """Обработчик команды /view_capsules с улучшенным отображением и пагинацией."""
     try:
         capsules = get_user_capsules(update.message.from_user.id)
-        if capsules:
-            response = []
-            for c in capsules:
-                status = t('scheduled') if c['scheduled_at'] else t('draft')
-                created_at = datetime.fromisoformat(c['created_at']).strftime('%d.%m.%Y %H:%M')
-                response.append(
-                    f"📦 #{c['id']} {c['title']}\n"
-                    f"🕒 {t('created_at')}: {created_at}\n"
-                    f"🔒 {t('status')}: {status}"
-                )
-            
-            # Создаем кнопки для выбора капсул
-            keyboard = []
-            row = []
-            for capsule in capsules:
-                button_text = f"📦 #{capsule['id']}: {capsule['title']}"[:30]  # Ограничиваем длину текста
-                button = InlineKeyboardButton(button_text, callback_data=f"view_{capsule['id']}")
-                row.append(button)
-                if len(row) == 2:  # Если в ряду 2 кнопки, добавляем ряд в клавиатуру
-                    keyboard.append(row)
-                    row = []
-            if row:  # Добавляем последний ряд, если он не пустой
-                keyboard.append(row)
-
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await update.message.reply_text(
-                t('your_capsules') + "\n\n" + "\n\n".join(response),
-                parse_mode="Markdown",
-                reply_markup=reply_markup
-            )
-        else:
+        if not capsules:
             await update.message.reply_text(t('no_capsules'))
+            return
+
+        # Пагинация: определяем текущую страницу
+        page = context.user_data.get('view_capsules_page', 1)
+        capsules_per_page = 5  # Количество капсул на странице
+        total_pages = (len(capsules) + capsules_per_page - 1) // capsules_per_page
+
+        # Ограничиваем страницу
+        page = max(1, min(page, total_pages))
+
+        # Выбираем капсулы для текущей страницы
+        start_idx = (page - 1) * capsules_per_page
+        end_idx = start_idx + capsules_per_page
+        current_capsules = capsules[start_idx:end_idx]
+
+        # Формируем текст и кнопки
+        response = f"📋 {t('your_capsules')} (Страница {page} из {total_pages}):\n\n"
+        keyboard = []
+        for capsule in current_capsules:
+            status = t('scheduled') if capsule['scheduled_at'] else t('draft')
+            button_text = f"📦 #{capsule['id']} {capsule['title']} ({status})"[:40]  # Ограничиваем длину текста
+            button = InlineKeyboardButton(button_text, callback_data=f"view_{capsule['id']}")
+            keyboard.append([button])  # Каждая кнопка в отдельной строке
+
+        # Добавляем кнопки пагинации
+        nav_buttons = []
+        if page > 1:
+            nav_buttons.append(InlineKeyboardButton("⬅️ Предыдущая", callback_data=f"view_page_{page-1}"))
+        if page < total_pages:
+            nav_buttons.append(InlineKeyboardButton("Следующая ➡️", callback_data=f"view_page_{page+1}"))
+        if nav_buttons:
+            keyboard.append(nav_buttons)
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(response, reply_markup=reply_markup)
+
+        # Сохраняем текущую страницу
+        context.user_data['view_capsules_page'] = page
+
     except Exception as e:
         logger.error(f"Ошибка при получении капсул: {e}")
         await update.message.reply_text(t('error_general'))
@@ -207,10 +215,17 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
         if len(parts) != 2:
             raise ValueError("Неверный формат callback_data")
         action, capsule_id = parts
+        # Проверяем, является ли capsule_id числом (для пагинации или выбора капсулы)
         capsule_id = int(capsule_id)  # Пытаемся преобразовать capsule_id в число
     except (ValueError, IndexError) as e:
         logger.error(f"Ошибка при разборе callback_data: {query.data}, ошибка: {e}")
         await query.edit_message_text("⚠️ Ошибка: Неверный формат данных. Пожалуйста, попробуйте снова.")
+        return
+
+    # Обработка пагинации
+    if action == "view_page":
+        context.user_data['view_capsules_page'] = capsule_id
+        await view_capsules_command(update, context)
         return
 
     context.user_data['selected_capsule_id'] = capsule_id
@@ -497,6 +512,7 @@ async def handle_send_capsule_logic(update: Update, context: CallbackContext, ca
                 await update.callback_query.edit_message_text(t('capsule_sent', recipient=recipient['recipient_username']))
             else:
                 await update.callback_query.edit_message_text(t('recipient_not_registered', recipient=recipient['recipient_username']))
+        # Удаляем строку delete_capsule(capsule_id), чтобы капсула оставалась в базе
     except Exception as e:
         logger.error(f"Ошибка при отправке капсулы: {e}")
         await update.callback_query.edit_message_text(t('service_unavailable'))
