@@ -118,4 +118,3 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(t('error_general'))
         else:
             await update.callback_query.edit_message_text(t('error_general'))
-
