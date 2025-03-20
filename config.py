@@ -8,7 +8,7 @@ from celery import Celery
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -20,7 +20,8 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 REDIS_URL = os.getenv("REDIS_URL")
 
 if not all([TELEGRAM_TOKEN, ENCRYPTION_KEY, SUPABASE_URL, SUPABASE_KEY, REDIS_URL]):
-    logger.error("Не все обязательные переменные окружения заданы.")
+    logger.error("Не все обязательные переменные окружения заданы: TELEGRAM_TOKEN=%s, ENCRYPTION_KEY=%s, SUPABASE_URL=%s, SUPABASE_KEY=%s, REDIS_URL=%s",
+                 TELEGRAM_TOKEN, ENCRYPTION_KEY, SUPABASE_URL, SUPABASE_KEY, REDIS_URL)
     sys.exit(1)
 
 ENCRYPTION_KEY_BYTES = ENCRYPTION_KEY.encode('utf-8').ljust(32)[:32]
@@ -28,6 +29,7 @@ ENCRYPTION_KEY_BYTES = ENCRYPTION_KEY.encode('utf-8').ljust(32)[:32]
 # Инициализация Supabase
 try:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    logger.info("Supabase успешно инициализирован")
 except Exception as e:
     logger.error(f"Ошибка инициализации Supabase: {e}")
     sys.exit(1)
@@ -40,34 +42,47 @@ celery_app.conf.accept_content = ['json']
 celery_app.conf.timezone = 'UTC'
 celery_app.conf.broker_connection_retry_on_startup = True
 
+# Проверка подключения к Redis
 def check_redis_connection():
     try:
         redis_client = redis.StrictRedis.from_url(REDIS_URL)
         redis_client.ping()
-        logger.info("Redis запущен и доступен.")
+        logger.info("Redis успешно пингован и доступен по адресу: %s", REDIS_URL)
     except redis.ConnectionError as e:
-        logger.error(f"Ошибка подключения к Redis: {e}")
+        logger.error("Ошибка подключения к Redis по адресу %s: %s", REDIS_URL, e)
+        sys.exit(1)
+    except Exception as e:
+        logger.error("Неизвестная ошибка при проверке Redis: %s", e)
         sys.exit(1)
 
+# Проверка запуска Celery Worker
 def check_celery_worker():
     try:
-        # Проверка активности Celery Worker
-        result = celery_app.control.inspect().active()
-        if result:
-            logger.info("Celery Worker запущен.")
-        else:
-            logger.error("Celery Worker не запущен. Проверьте Procfile и логи Railway.")
+        logger.info("Начало проверки активности Celery Worker")
+        inspect = celery_app.control.inspect()
+        logger.debug("Создан объект inspect для проверки Celery: %s", inspect)
+        
+        active_workers = inspect.active()
+        logger.info("Результат проверки активных воркеров: %s", active_workers)
+        
+        if active_workers is None:
+            logger.error("Celery Worker не отвечает (inspect.active() вернул None). Возможные причины: воркер не запущен, проблемы с брокером Redis (%s), или конфигурация Celery некорректна", REDIS_URL)
             sys.exit(1)
+        elif not active_workers:
+            logger.error("Celery Worker не запущен: список активных воркеров пуст. Проверьте логи воркера и убедитесь, что команда 'celery -A tasks worker' выполняется")
+            sys.exit(1)
+        else:
+            logger.info("Celery Worker активен. Найденные воркеры: %s", list(active_workers.keys()))
     except Exception as e:
-        logger.error(f"Ошибка проверки Celery Worker: {e}")
+        logger.error("Ошибка при проверке Celery Worker: %s. Детали: %s", type(e).__name__, e)
+        logger.error("Проверьте: 1) Запущен ли воркер (Procfile: worker: celery -A tasks worker --loglevel=info), 2) Доступен ли Redis (%s), 3) Правильность конфигурации Celery", REDIS_URL)
         sys.exit(1)
-
 
 # Функция запуска сервисов
 def start_services():
     """Запуск необходимых сервисов."""
+    logger.info("Запуск проверки сервисов")
     check_redis_connection()
-    logger.info("Redis успешно запущен.")
-    # Проверяем Celery Worker только после запуска Redis
+    logger.info("Redis успешно запущен и проверен")
     check_celery_worker()
-    logger.info("Celery Worker успешно запущен.")
+    logger.info("Celery Worker успешно проверен и запущен")
