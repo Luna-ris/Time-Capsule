@@ -1,5 +1,4 @@
 import json
-import pytz
 from datetime import datetime, timedelta
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
@@ -63,10 +62,19 @@ async def show_capsule_selection(update: Update, context: CallbackContext, actio
         await update.message.reply_text(t('no_capsules'))
         return False
 
-    keyboard = [
-        [InlineKeyboardButton(f"#{c['id']}: {c['title']}", callback_data=f"{action}_{c['id']}")]
-        for c in capsules
-    ]
+    # Создаем кнопки в 2 столбца
+    keyboard = []
+    row = []
+    for capsule in capsules:
+        button_text = f"📦 #{capsule['id']}: {capsule['title']}"[:30]  # Ограничиваем длину текста
+        button = InlineKeyboardButton(button_text, callback_data=f"{action}_{capsule['id']}")
+        row.append(button)
+        if len(row) == 2:  # Если в ряду 2 кнопки, добавляем ряд в клавиатуру
+            keyboard.append(row)
+            row = []
+    if row:  # Добавляем последний ряд, если он не пустой
+        keyboard.append(row)
+
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(t('select_capsule'), reply_markup=reply_markup)
     context.user_data['action'] = action
@@ -78,19 +86,38 @@ async def add_recipient_command(update: Update, context: CallbackContext):
         context.user_data['state'] = SELECTING_CAPSULE_FOR_RECIPIENTS
 
 async def view_capsules_command(update: Update, context: CallbackContext):
-    """Обработчик команды /view_capsules."""
+    """Обработчик команды /view_capsules с улучшенным отображением."""
     try:
         capsules = get_user_capsules(update.message.from_user.id)
         if capsules:
-            response = [
-                f"📦 #{c['id']} {c['title']}\n"
-                f"🕒 {t('created_at')}: {datetime.fromisoformat(c['created_at']).strftime('%d.%m.%Y %H:%M')}\n"
-                f"🔒 {t('status')}: {t('scheduled') if c['scheduled_at'] else t('draft')}"
-                for c in capsules
-            ]
+            response = []
+            for c in capsules:
+                status = t('scheduled') if c['scheduled_at'] else t('draft')
+                created_at = datetime.fromisoformat(c['created_at']).strftime('%d.%m.%Y %H:%M')
+                response.append(
+                    f"📦 #{c['id']} {c['title']}\n"
+                    f"🕒 {t('created_at')}: {created_at}\n"
+                    f"🔒 {t('status')}: {status}"
+                )
+            
+            # Создаем кнопки для выбора капсул
+            keyboard = []
+            row = []
+            for capsule in capsules:
+                button_text = f"📦 #{capsule['id']}: {capsule['title']}"[:30]  # Ограничиваем длину текста
+                button = InlineKeyboardButton(button_text, callback_data=f"view_{capsule['id']}")
+                row.append(button)
+                if len(row) == 2:  # Если в ряду 2 кнопки, добавляем ряд в клавиатуру
+                    keyboard.append(row)
+                    row = []
+            if row:  # Добавляем последний ряд, если он не пустой
+                keyboard.append(row)
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
             await update.message.reply_text(
-                t('your_capsules') + "\n" + "\n".join(response),
-                parse_mode="Markdown"
+                t('your_capsules') + "\n\n" + "\n\n".join(response),
+                parse_mode="Markdown",
+                reply_markup=reply_markup
             )
         else:
             await update.message.reply_text(t('no_capsules'))
@@ -206,6 +233,17 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(t('choose_send_date'), reply_markup=reply_markup)
+    elif action == "view":
+        # Показываем информацию о капсуле (можно добавить дополнительные действия)
+        capsule = fetch_data("capsules", {"id": capsule_id})
+        if capsule:
+            status = t('scheduled') if capsule[0]['scheduled_at'] else t('draft')
+            created_at = datetime.fromisoformat(capsule[0]['created_at']).strftime('%d.%m.%Y %H:%M')
+            await query.edit_message_text(
+                f"📦 #{capsule[0]['id']} {capsule[0]['title']}\n"
+                f"🕒 {t('created_at')}: {created_at}\n"
+                f"🔒 {t('status')}: {status}"
+            )
 
 async def preview_capsule(update: Update, context: CallbackContext, capsule_id: int):
     """Предпросмотр капсулы перед отправкой."""
