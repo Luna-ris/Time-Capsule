@@ -82,7 +82,6 @@ async def post_init(application: Application):
     except Exception as e:
         logger.error(f"Не удалось инициализировать задачи: {e}")
 
-
 async def check_bot_permissions(context: CallbackContext):
     """Проверка прав бота."""
     me = await context.bot.get_me()
