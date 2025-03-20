@@ -97,6 +97,9 @@ async def view_capsules_command(update: Update, context: CallbackContext):
                 await update.effective_message.reply_text(t('no_capsules'))
             return
 
+        # Сортируем капсулы по ID по возрастанию
+        capsules = sorted(capsules, key=lambda x: x['id'])
+
         # Пагинация: определяем текущую страницу
         page = context.user_data.get('view_capsules_page', 1)
         capsules_per_page = 5  # Количество капсул на странице
@@ -114,8 +117,8 @@ async def view_capsules_command(update: Update, context: CallbackContext):
         response = f"📋 {t('your_capsules')} (Страница {page} из {total_pages}):\n\n"
         keyboard = []
         for capsule in current_capsules:
-            status = t('scheduled') if capsule['scheduled_at'] else t('draft')
-            button_text = f"📦 #{capsule['id']} {capsule['title']} ({status})"[:40]  # Ограничиваем длину текста
+            # Убираем статус, оставляем только номер и название
+            button_text = f"📦 #{capsule['id']} {capsule['title']}"[:40]  # Ограничиваем длину текста
             button = InlineKeyboardButton(button_text, callback_data=f"view_{capsule['id']}")
             keyboard.append([button])  # Каждая кнопка в отдельной строке
 
@@ -249,7 +252,7 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
         await query.edit_message_text(t('enter_recipients'))
         context.user_data['state'] = "adding_recipient"
     elif action == "send_capsule":
-        await preview_capsule(update, context, capsule_id)
+        await preview_capsule(update, context, capsule_id, show_buttons=True)
     elif action == "delete_capsule":
         await query.edit_message_text(
             t('confirm_delete'),
@@ -272,19 +275,11 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(t('choose_send_date'), reply_markup=reply_markup)
     elif action == "view":
-        # Показываем информацию о капсуле
-        capsule = fetch_data("capsules", {"id": capsule_id})
-        if capsule:
-            status = t('scheduled') if capsule[0]['scheduled_at'] else t('draft')
-            created_at = datetime.fromisoformat(capsule[0]['created_at']).strftime('%d.%m.%Y %H:%M')
-            await query.edit_message_text(
-                f"📦 #{capsule[0]['id']} {capsule[0]['title']}\n"
-                f"🕒 {t('created_at')}: {created_at}\n"
-                f"🔒 {t('status')}: {status}"
-            )
+        # Показываем содержимое капсулы без кнопок
+        await preview_capsule(update, context, capsule_id, show_buttons=False)
 
-async def preview_capsule(update: Update, context: CallbackContext, capsule_id: int):
-    """Предпросмотр капсулы перед отправкой."""
+async def preview_capsule(update: Update, context: CallbackContext, capsule_id: int, show_buttons: bool = True):
+    """Предпросмотр капсулы перед отправкой или просмотром."""
     capsule = fetch_data("capsules", {"id": capsule_id})
     if not capsule:
         await update.callback_query.edit_message_text(t('invalid_capsule_id'))
@@ -307,11 +302,15 @@ async def preview_capsule(update: Update, context: CallbackContext, capsule_id: 
     if content.get('voices'):
         preview_text += f"Голосовые: {len(content['voices'])} шт.\n"
 
-    keyboard = [
-        [InlineKeyboardButton("Отправить", callback_data="confirm_send"),
-         InlineKeyboardButton("Отмена", callback_data="cancel_send")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    if show_buttons:
+        keyboard = [
+            [InlineKeyboardButton("Отправить", callback_data="confirm_send"),
+             InlineKeyboardButton("Отмена", callback_data="cancel_send")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+    else:
+        reply_markup = None  # Без кнопок
+
     await update.callback_query.edit_message_text(preview_text, reply_markup=reply_markup)
 
 async def handle_date_buttons(update: Update, context: CallbackContext):
