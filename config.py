@@ -55,7 +55,6 @@ def check_redis_connection():
         logger.error("Неизвестная ошибка при проверке Redis: %s", e)
         sys.exit(1)
 
-# Проверка запуска Celery Worker
 def check_celery_worker():
     try:
         logger.info("Начало проверки активности Celery Worker")
@@ -66,23 +65,25 @@ def check_celery_worker():
         logger.info("Результат проверки активных воркеров: %s", active_workers)
         
         if active_workers is None:
-            logger.error("Celery Worker не отвечает (inspect.active() вернул None). Возможные причины: воркер не запущен, проблемы с брокером Redis (%s), или конфигурация Celery некорректна", REDIS_URL)
-            sys.exit(1)
+            logger.warning("Celery Worker не отвечает (inspect.active() вернул None). Воркер может не быть запущен, но продолжаем запуск бота для отладки")
+            return False
         elif not active_workers:
-            logger.error("Celery Worker не запущен: список активных воркеров пуст. Проверьте логи воркера и убедитесь, что команда 'celery -A tasks worker' выполняется")
-            sys.exit(1)
+            logger.warning("Celery Worker не запущен: список активных воркеров пуст. Проверьте логи воркера")
+            return False
         else:
             logger.info("Celery Worker активен. Найденные воркеры: %s", list(active_workers.keys()))
+            return True
     except Exception as e:
         logger.error("Ошибка при проверке Celery Worker: %s. Детали: %s", type(e).__name__, e)
-        logger.error("Проверьте: 1) Запущен ли воркер (Procfile: worker: celery -A tasks worker --loglevel=info), 2) Доступен ли Redis (%s), 3) Правильность конфигурации Celery", REDIS_URL)
-        sys.exit(1)
+        logger.warning("Продолжаем запуск бота без проверки воркера для отладки")
+        return False
 
-# Функция запуска сервисов
 def start_services():
     """Запуск необходимых сервисов."""
     logger.info("Запуск проверки сервисов")
     check_redis_connection()
     logger.info("Redis успешно запущен и проверен")
-    check_celery_worker()
-    logger.info("Celery Worker успешно проверен и запущен")
+    if check_celery_worker():
+        logger.info("Celery Worker успешно проверен и запущен")
+    else:
+        logger.warning("Celery Worker не проверен успешно, но бот продолжает работу")
