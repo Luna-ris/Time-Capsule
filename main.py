@@ -38,9 +38,10 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение об ошибке через callback: {e}")
 
+# Проверка задачи Celery
 async def check_celery_task(celery_app):
-    """Проверка задач Celery."""
     try:
+        # Отправляем тестовую задачу
         result = celery_app.send_task('main.send_capsule_task', args=[1], countdown=10)
         async_result = AsyncResult(result.id, app=celery_app)
         logger.info(f"Статус задачи Celery: {async_result.status}")
@@ -53,37 +54,29 @@ async def check_celery_task(celery_app):
     except Exception as e:
         logger.error(f"Ошибка проверки задачи Celery: {e}")
 
-async def check_services():
-    """Проверка всех сервисов."""
-    try:
-        from config import check_redis_connection
-        check_redis_connection()
-        await check_celery_task(celery_app)
-        logger.info("Все сервисы запущены.")
-    except Exception as e:
-        logger.error(f"Ошибка проверки сервисов: {e}")
-        sys.exit(1)
-
+# Проверка запуска бота
 async def check_bot_running(context: CallbackContext):
-    """Проверка работы бота."""
     try:
         me = await context.bot.get_me()
         logger.info(f"Бот запущен как @{me.username}")
     except Exception as e:
-        logger.error(f"Ошибка проверки бота: {e}")
+        logger.error(f"Ошибка проверки запуска бота: {e}")
         sys.exit(1)
 
-def main():
+# Основная функция запуска бота
+async def main():
     """Основная функция запуска бота."""
     try:
         nest_asyncio.apply()
         start_services()
+
+        # Создание приложения Telegram
         logger.info("Инициализация приложения Telegram...")
         app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
-        
+
         # Регистрация обработчика ошибок
         app.add_error_handler(error_handler)
-        
+
         # Регистрация обработчиков команд
         logger.info("Регистрация обработчиков команд...")
         app.add_handler(CommandHandler("start", start))
@@ -98,7 +91,7 @@ def main():
         app.add_handler(CommandHandler("select_send_date", select_send_date))
         app.add_handler(CommandHandler("support_author", support_author))
         app.add_handler(CommandHandler("change_language", change_language))
-        
+
         # Регистрация обработчиков callback-запросов
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
@@ -106,7 +99,7 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view|add_recipient_page|send_capsule_page|delete_capsule_page|edit_capsule_page|view_recipients_page|view_page)_\d+$"))
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
-        
+
         # Регистрация обработчиков сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
         app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
@@ -115,14 +108,13 @@ def main():
         app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
         app.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
         app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-        
+
         # Проверка прав бота с небольшой задержкой
         app.job_queue.run_once(check_bot_permissions, 2)
-        
-        # Проверка сервисов
-        app.job_queue.run_once(lambda _: check_services(), 5)
-        app.job_queue.run_once(lambda _: check_bot_running(context), 10)
-        
+
+        # Проверка запуска Celery
+        await check_celery_task(celery_app)
+
         # Запуск бота
         logger.info("Запуск бота...")
         app.run_polling(allowed_updates=Update.ALL_TYPES)
@@ -131,4 +123,5 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    import asyncio
+    asyncio.run(main())
