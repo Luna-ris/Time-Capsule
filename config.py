@@ -17,7 +17,7 @@ class ContextualFilter(logging.Filter):
     def filter(self, record):
         record.user_id = getattr(record, 'user_id', None)
         record.command = getattr(record, 'command', None)
-        record.msg_content = getattr(record, 'msg_content', None)  # Изменено с message на msg_content
+        record.msg_content = getattr(record, 'msg_content', None)
         return True
 
 logger.addFilter(ContextualFilter())
@@ -36,14 +36,12 @@ if not all([TELEGRAM_TOKEN, ENCRYPTION_KEY, SUPABASE_URL, SUPABASE_KEY]):
 
 ENCRYPTION_KEY_BYTES = ENCRYPTION_KEY.encode('utf-8').ljust(32)[:32]
 
-# Инициализация Supabase
 try:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 except Exception as e:
     logger.error(f"Ошибка инициализации Supabase: {e}")
     sys.exit(1)
 
-# Настройка Celery
 celery_app = Celery('tasks', broker=os.getenv('REDIS_URL', 'redis://localhost:6379/0'))
 celery_app.conf.task_serializer = 'json'
 celery_app.conf.result_serializer = 'json'
@@ -52,7 +50,6 @@ celery_app.conf.timezone = 'UTC'
 celery_app.conf.broker_connection_retry_on_startup = True
 
 def start_services():
-    """Запуск необходимых сервисов."""
     redis_url = os.getenv("REDIS_URL")
     if not redis_url:
         logger.error("Переменная REDIS_URL не задана.")
