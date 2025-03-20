@@ -26,7 +26,7 @@ from utils import post_init, check_bot_permissions
 async def error_handler(update: Update, context: CallbackContext) -> None:
     """Обработчик ошибок для Telegram бота."""
     logger.error(f"Произошла ошибка: {context.error}")
-    
+
     # Проверяем, есть ли сообщение (update.message)
     if update and update.effective_message:
         try:
