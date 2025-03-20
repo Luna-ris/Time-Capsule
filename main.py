@@ -28,9 +28,9 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
     logger.error(f"Произошла ошибка: {context.error}")
     
     # Проверяем, есть ли сообщение (update.message)
-    if update and update.message:
+    if update and update.effective_message:
         try:
-            await update.message.reply_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова позже.")
+            await update.effective_message.reply_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова позже.")
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение об ошибке пользователю: {e}")
     # Если это callback-запрос (update.callback_query)
@@ -72,7 +72,7 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
         app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
-        app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view|view_page)_\d+$"))
+        app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view|add_recipient_page|send_capsule_page|delete_capsule_page|edit_capsule_page|view_recipients_page|view_page)_\d+$"))
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
 
