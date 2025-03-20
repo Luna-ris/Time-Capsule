@@ -118,10 +118,3 @@ def get_user_capsules(telegram_id: int) -> list:
 def get_capsule_recipients(capsule_id: int) -> list:
     """Получение списка получателей капсулы."""
     return fetch_data("recipients", {"capsule_id": capsule_id})
-
-# Примечание: Индексы нужно создать вручную в Supabase для оптимизации
-# Рекомендуемые индексы:
-# - users(telegram_id)
-# - capsules(id)
-# - capsules(scheduled_at)
-# - recipients(capsule_id)
