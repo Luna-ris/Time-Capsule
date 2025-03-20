@@ -72,7 +72,7 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
         app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
-        app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view)_\d+$"))
+        app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view|view_page)_\d+$"))
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
 
