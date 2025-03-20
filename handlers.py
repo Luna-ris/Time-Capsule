@@ -200,8 +200,15 @@ async def handle_language_selection(update: Update, context: CallbackContext):
 async def handle_inline_selection(update: Update, context: CallbackContext):
     """Обработчик выбора капсулы через инлайн-меню."""
     query = update.callback_query
-    action, capsule_id = query.data.split('_', 1)
-    capsule_id = int(capsule_id)
+    try:
+        # Разделяем callback_data на action и capsule_id
+        action, capsule_id = query.data.split('_', 1)
+        capsule_id = int(capsule_id)  # Пытаемся преобразовать capsule_id в число
+    except (ValueError, IndexError) as e:
+        logger.error(f"Ошибка при разборе callback_data: {query.data}, ошибка: {e}")
+        await query.edit_message_text("⚠️ Ошибка: Неверный формат данных. Пожалуйста, попробуйте снова.")
+        return
+
     context.user_data['selected_capsule_id'] = capsule_id
 
     if not await check_capsule_ownership(update, capsule_id, query):
@@ -234,7 +241,7 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(t('choose_send_date'), reply_markup=reply_markup)
     elif action == "view":
-        # Показываем информацию о капсуле (можно добавить дополнительные действия)
+        # Показываем информацию о капсуле
         capsule = fetch_data("capsules", {"id": capsule_id})
         if capsule:
             status = t('scheduled') if capsule[0]['scheduled_at'] else t('draft')
@@ -372,6 +379,7 @@ async def handle_create_capsule_recipients(update: Update, context: CallbackCont
         context.user_data['capsule_recipients'] = usernames
         context.user_data['state'] = CREATING_CAPSULE_DATE
         keyboard = [
+            [基本的
             [InlineKeyboardButton(t("through_week"), callback_data="week")],
             [InlineKeyboardButton(t("through_month"), callback_data="month")],
             [InlineKeyboardButton(t("select_date"), callback_data="custom")]
