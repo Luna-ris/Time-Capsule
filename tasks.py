@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 import pytz
 from telegram import Bot
@@ -59,8 +59,43 @@ def send_capsule_task(capsule_id: int):
                     logger.warning(f"Получатель @{recipient['recipient_username']} не зарегистрирован")
             logger.info(f"Капсула {capsule_id} успешно отправлена")
             delete_capsule(capsule_id)
+
+            # Уведомление создателя об успешной отправке
+            if creator and creator[0]['chat_id']:
+                await bot.bot.send_message(
+                    chat_id=creator[0]['chat_id'],
+                    text=f"📬 Ваша капсула #{capsule_id} успешно отправлена всем получателям!"
+                )
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
     asyncio.run(send_async())
 
+@celery_app.task(name='main.remind_capsule_task')
+def remind_capsule_task(capsule_id: int):
+    """Задача Celery для отправки напоминания за день до отправки капсулы."""
+    async def remind_async():
+        try:
+            capsule = fetch_data("capsules", {"id": capsule_id})
+            if not capsule or not capsule[0].get('scheduled_at'):
+                logger.error(f"Капсула {capsule_id} не найдена или не имеет даты отправки")
+                return
+
+            creator = fetch_data("users", {"id": capsule[0]['creator_id']})
+            if not creator or not creator[0]['chat_id']:
+                logger.warning(f"Создатель капсулы {capsule_id} не найден или не имеет chat_id")
+                return
+
+            bot = Application.builder().token(TELEGRAM_TOKEN).build()
+            await bot.initialize()
+
+            scheduled_at = datetime.fromisoformat(capsule[0]['scheduled_at']).replace(tzinfo=pytz.utc)
+            await bot.bot.send_message(
+                chat_id=creator[0]['chat_id'],
+                text=f"⏰ Напоминание: Ваша капсула #{capsule_id} будет отправлена завтра в {scheduled_at.strftime('%d.%m.%Y %H:%M')} (UTC)!"
+            )
+            logger.info(f"Напоминание о капсуле {capsule_id} отправлено создателю")
+        except Exception as e:
+            logger.error(f"Ошибка в задаче напоминания для капсулы {capsule_id}: {e}")
+
+    asyncio.run(remind_async())
