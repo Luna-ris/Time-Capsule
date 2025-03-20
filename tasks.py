@@ -13,7 +13,6 @@ from crypto import decrypt_data_aes
 @celery_app.task(name='main.send_capsule_task')
 def send_capsule_task(capsule_id: int):
     """Задача Celery для отправки капсулы."""
-    logger.info(f"Starting send_capsule_task for capsule_id: {capsule_id}")
     async def send_async():
         try:
             logger.info(f"Начинаю отправку капсулы {capsule_id}")
@@ -21,19 +20,15 @@ def send_capsule_task(capsule_id: int):
             if not capsule:
                 logger.error(f"Капсула {capsule_id} не найдена")
                 return
-
             content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
             recipients = get_capsule_recipients(capsule_id)
             if not recipients:
                 logger.error(f"Нет получателей для капсулы {capsule_id}")
                 return
-
             bot = Application.builder().token(TELEGRAM_TOKEN).build()
             await bot.initialize()
-
             creator = fetch_data("users", {"id": capsule[0]['creator_id']})
             sender_username = creator[0]['username'] if creator else "Unknown"
-
             for recipient in recipients:
                 chat_id = get_chat_id(recipient['recipient_username'])
                 if chat_id:
@@ -61,5 +56,4 @@ def send_capsule_task(capsule_id: int):
             delete_capsule(capsule_id)
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
-
     asyncio.run(send_async())
