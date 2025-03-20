@@ -5,6 +5,7 @@ from telegram import Bot
 from config import logger, TELEGRAM_TOKEN, ENCRYPTION_KEY_BYTES, celery_app
 from localization import t
 from database import fetch_data, delete_capsule, get_capsule_recipients, get_chat_id
+from crypto import decrypt_data_aes
 
 # Глобальный объект бота для задач Celery
 bot = Bot(TELEGRAM_TOKEN)
@@ -51,11 +52,10 @@ def send_capsule_task(capsule_id: int):
         logger.info(f"Капсула {capsule_id} успешно отправлена")
         delete_capsule(capsule_id)
 
-        # Уведомление создателю
         if creator and creator[0]['chat_id']:
             bot.send_message(chat_id=creator[0]['chat_id'], text=f"📬 Ваша капсула #{capsule_id} успешно отправлена всем получателям!")
     except Exception as e:
-        logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
+        logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}", extra={"user_id": None, "command": "send_capsule_task", "msg_content": str(e)})
 
 def remind_capsule_task(capsule_id: int):
     """Синхронная задача Celery для напоминания о капсуле."""
@@ -77,7 +77,7 @@ def remind_capsule_task(capsule_id: int):
         )
         logger.info(f"Напоминание о капсуле {capsule_id} отправлено создателю")
     except Exception as e:
-        logger.error(f"Ошибка в задаче напоминания для капсулы {capsule_id}: {e}")
+        logger.error(f"Ошибка в задаче напоминания для капсулы {capsule_id}: {e}", extra={"user_id": None, "command": "remind_capsule_task", "msg_content": str(e)})
 
 # Регистрация задач в Celery
 celery_app.task(name='main.send_capsule_task')(send_capsule_task)
