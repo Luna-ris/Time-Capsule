@@ -1,4 +1,4 @@
-import json
+mport json
 from datetime import datetime
 from telegram.ext import Application, CallbackContext
 from telegram import Update
@@ -13,7 +13,6 @@ from database import (
 )
 from localization import t
 import pytz
-import re
 
 CREATING_CAPSULE_TITLE = "creating_capsule_title"
 CREATING_CAPSULE_CONTENT = "creating_capsule_content"
@@ -49,11 +48,7 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
     update_data("capsules", {"id": capsule_id}, {"content": encrypted})
 
 def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> datetime:
-    """Конвертация местного времени в UTC с валидацией формата."""
-    date_pattern = r"^\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}:\d{2}$"
-    if not re.match(date_pattern, local_time_str):
-        raise ValueError("Неверный формат даты. Используйте: дд.мм.гггг чч:мм:сс")
-    
+    """Конвертация местного времени в UTC."""
     local_tz = pytz.timezone(timezone)
     local_time = datetime.strptime(local_time_str, "%d.%m.%Y %H:%M:%S")
     local_time = local_tz.localize(local_time)
@@ -85,7 +80,7 @@ async def post_init(application: Application):
                     logger.info(f"Задача для капсулы {capsule['id']} запланирована на {scheduled_at}")
         logger.info("Инициализация задач завершена")
     except Exception as e:
-        logger.error(f"Не удалось инициализировать задачи: {e}", extra={"user_id": None, "command": "post_init"})
+        logger.error(f"Не удалось инициализировать задачи: {e}")
 
 async def check_bot_permissions(context: CallbackContext):
     """Проверка прав бота."""
@@ -120,10 +115,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
         if context.user_data.get('state') != CREATING_CAPSULE_DATE:
             context.user_data['state'] = "idle"
     except Exception as e:
-        logger.error(
-            f"Ошибка при установке даты для капсулы {capsule_id}: {e}",
-            extra={"user_id": update.effective_user.id, "command": "save_send_date", "message": str(update.message.text if update.message else None)}
-        )
+        logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
         if is_message:
             await update.message.reply_text(t('error_general'))
         else:
