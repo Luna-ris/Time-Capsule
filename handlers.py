@@ -258,6 +258,7 @@ async def handle_language_selection(update: Update, context: CallbackContext):
 async def handle_inline_selection(update: Update, context: CallbackContext):
     """Обработчик выбора капсулы через инлайн-меню."""
     query = update.callback_query
+    logger.info(f"handle_inline_selection вызвана с callback_data: {query.data}")
     try:
         # Разделяем callback_data на части
         parts = query.data.rsplit('_', 1)  # Разделяем по последнему '_'
@@ -351,18 +352,25 @@ async def preview_capsule(update: Update, context: CallbackContext, capsule_id: 
 async def handle_date_buttons(update: Update, context: CallbackContext):
     """Обработчик кнопок выбора даты отправки."""
     query = update.callback_query
-    if query.data == 'week':
-        send_date = datetime.now(pytz.utc) + timedelta(weeks=1)
-        await save_send_date(update, context, send_date)
-    elif query.data == 'month':
-        send_date = datetime.now(pytz.utc) + timedelta(days=30)
-        await save_send_date(update, context, send_date)
-    elif query.data == 'custom':
-        await query.edit_message_text(
-            "📅 Введите дату и время отправки в формате 'день.месяц.год час:минута:секунда'.\n"
-            "Пример: 17.03.2025 21:12:00"
-        )
-        context.user_data['state'] = "entering_custom_date"
+    logger.info(f"handle_date_buttons вызвана с callback_data: {query.data}")
+    try:
+        if query.data == 'week':
+            send_date = datetime.now(pytz.utc) + timedelta(weeks=1)
+            await save_send_date(update, context, send_date)
+            await query.edit_message_text(f"📅 Дата отправки установлена: через неделю ({send_date.strftime('%d.%m.%Y %H:%M:%S')})")
+        elif query.data == 'month':
+            send_date = datetime.now(pytz.utc) + timedelta(days=30)
+            await save_send_date(update, context, send_date)
+            await query.edit_message_text(f"📅 Дата отправки установлена: через месяц ({send_date.strftime('%d.%m.%Y %H:%M:%S')})")
+        elif query.data == 'custom':
+            await query.edit_message_text(
+                "📅 Введите дату и время отправки в формате 'день.месяц.год час:минута:секунда'.\n"
+                "Пример: 17.03.2025 21:12:00"
+            )
+            context.user_data['state'] = "entering_custom_date"
+    except Exception as e:
+        logger.error(f"Ошибка в handle_date_buttons: {e}")
+        await query.edit_message_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова.")
 
 async def handle_delete_confirmation(update: Update, context: CallbackContext):
     """Обработчик подтверждения удаления капсулы."""
