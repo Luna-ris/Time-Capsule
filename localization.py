@@ -32,7 +32,7 @@ TRANSLATIONS = {
             "*Пример:* @Friend1 @Friend2\n"
             "Они получат капсулу, когда вы её отправите или наступит заданная дата."
         ),
-        "select_capsule": "📦 Введите номер капсулы для действия:",
+        "select_capsule": "📦 Выберите капсулу для действия:",
         "invalid_capsule_id": (
             "❌ Неверный ID капсулы. Проверьте список ваших капсул с помощью 'Просмотреть капсулы'."
         ),
@@ -132,7 +132,7 @@ TRANSLATIONS = {
             "*Example:* @Friend1 @Friend2\n"
             "They’ll receive the capsule when you send it or the scheduled date arrives."
         ),
-        "select_capsule": "📦 Enter the capsule number for the action:",
+        "select_capsule": "📦 Select a capsule for the action:",
         "invalid_capsule_id": "❌ Invalid capsule ID. Check your capsule list with 'View Capsules'.",
         "recipients_added": (
             "✅ Recipients added to capsule #{capsule_id}!\n"
@@ -225,7 +225,7 @@ TRANSLATIONS = {
             "*Ejemplo:* @Friend1 @Friend2\n"
             "Ellos recibirán la cápsula cuando la envíes o llegue la fecha programada."
         ),
-        "select_capsule": "📦 Ingresa el número de la cápsula para la acción:",
+        "select_capsule": "📦 Selecciona una cápsula para la acción:",
         "invalid_capsule_id": "❌ ID de cápsula inválido. Verifica tu lista de cápsulas con 'Ver cápsulas'.",
         "recipients_added": (
             "✅ ¡Destinatarios agregados a la cápsula #{capsule_id}!\n"
@@ -319,7 +319,7 @@ TRANSLATIONS = {
             "*Exemple:* @Friend1 @Friend2\n"
             "Ils recevront la capsule lorsque vous l'enverrez ou à la date programmée."
         ),
-        "select_capsule": "📦 Entrez le numéro de la capsule pour l'action :",
+        "select_capsule": "📦 Sélectionnez une capsule pour l'action :",
         "invalid_capsule_id": "❌ ID de capsule invalide. Vérifiez votre liste de capsules avec 'Voir les capsules'.",
         "recipients_added": (
             "✅ Destinataires ajoutés à la capsule #{capsule_id} !\n"
@@ -378,7 +378,7 @@ TRANSLATIONS = {
         "send_capsule_btn": "📨 Envoyer la Capsule",
         "delete_capsule_btn": "🗑 Supprimer la Capsule",
         "edit_capsule_btn": "✏️ Modifier la Capsule",
-        "view_recipients_btn": "👥 Voir les Destinataires",
+        "view_recipients_btn": "👥 Voir les Destinatarios",
         "help_btn": "❓ Aide",
         "select_send_date_btn": "📅 Définir la Date d'Envoi",
         "support_author_btn": "💸 Soutenir l'Auteur",
@@ -413,7 +413,7 @@ TRANSLATIONS = {
             "*Beispiel:* @Friend1 @Friend2\n"
             "Sie erhalten die Kapsel, wenn Sie sie senden oder das geplante Datum erreicht ist."
         ),
-        "select_capsule": "📦 Geben Sie die Kapselnummer für die Aktion ein:",
+        "select_capsule": "📦 Wählen Sie eine Kapsel für die Aktion aus:",
         "invalid_capsule_id": "❌ Ungültige Kapsel-ID. Überprüfen Sie Ihre Kapselliste mit 'Kapseln anzeigen'.",
         "recipients_added": (
             "✅ Empfänger zur Kapsel #{capsule_id} hinzugefügt!\n"
