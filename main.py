@@ -23,14 +23,22 @@ from handlers import (
 from utils import post_init, check_bot_permissions
 
 # Обработчик ошибок
-async def error_handler(update: object, context: CallbackContext) -> None:
+async def error_handler(update: Update, context: CallbackContext) -> None:
     """Обработчик ошибок для Telegram бота."""
     logger.error(f"Произошла ошибка: {context.error}")
-    if update and hasattr(update, 'message'):
+    
+    # Проверяем, есть ли сообщение (update.message)
+    if update and update.message:
         try:
             await update.message.reply_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова позже.")
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение об ошибке пользователю: {e}")
+    # Если это callback-запрос (update.callback_query)
+    elif update and update.callback_query:
+        try:
+            await update.callback_query.edit_message_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова.")
+        except Exception as e:
+            logger.error(f"Не удалось отправить сообщение об ошибке через callback: {e}")
 
 def main():
     """Основная функция запуска бота."""
