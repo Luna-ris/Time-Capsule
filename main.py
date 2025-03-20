@@ -21,6 +21,7 @@ from handlers import (
     handle_content_buttons, handle_send_confirmation
 )
 from utils import post_init, check_bot_permissions
+from celery.result import AsyncResult
 
 # Обработчик ошибок
 async def error_handler(update: Update, context: CallbackContext) -> None:
@@ -38,6 +39,39 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
             await update.callback_query.edit_message_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова.")
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение об ошибке через callback: {e}")
+
+async def check_celery_task(celery_app):
+    try:
+        # Отправляем тестовую задачу
+        result = celery_app.send_task('main.send_capsule_task', args=[1], countdown=10)
+        # Проверяем статус задачи
+        async_result = AsyncResult(result.id, app=celery_app)
+        logger.info(f"Celery task status: {async_result.status}")
+        if async_result.status == 'PENDING':
+            logger.info("Celery task is pending.")
+        elif async_result.status == 'SUCCESS':
+            logger.info("Celery task completed successfully.")
+        else:
+            logger.error(f"Celery task failed with status: {async_result.status}")
+    except Exception as e:
+        logger.error(f"Celery task check error: {e}")
+
+async def check_bot_running(context: CallbackContext):
+    try:
+        me = await context.bot.get_me()
+        logger.info(f"Bot is running as @{me.username}")
+    except Exception as e:
+        logger.error(f"Bot check error: {e}")
+        sys.exit(1)
+
+async def check_services():
+    try:
+        check_redis_connection()
+        await check_celery_task(celery_app)
+        logger.info("All services are running.")
+    except Exception as e:
+        logger.error(f"Service check error: {e}")
+        sys.exit(1)
 
 def main():
     """Основная функция запуска бота."""
@@ -80,6 +114,7 @@ def main():
         app.add_handler(MessageHandler(filters.VOICE, handle_voice))
         # Проверка прав бота с небольшой задержкой
         app.job_queue.run_once(check_bot_permissions, 2)
+        app.job_queue.run_once(check_bot_running, 2)
         # Запуск бота
         logger.info("Запуск бота...")
         app.run_polling(allowed_updates=Update.ALL_TYPES)
