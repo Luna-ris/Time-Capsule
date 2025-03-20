@@ -242,7 +242,7 @@ async def handle_language_selection(update: Update, context: CallbackContext):
         'de': "Deutsch"
     }
     new_lang = lang_names.get(lang, "Unknown")
-    await query.edit_message_text(t("language_changed", lang=new_lang))
+    await query.edit_message_text(f"Язык изменен на {new_lang}.")
     keyboard = [
         [t("create_capsule_btn"), t("view_capsules_btn")],
         [t("add_recipient_btn"), t("send_capsule_btn")],
