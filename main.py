@@ -75,7 +75,8 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view|add_recipient_page|send_capsule_page|delete_capsule_page|edit_capsule_page|view_recipients_page|view_page)_\d+$"))
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
-
+        app.add_handler(CallbackQueryHandler(handle_edit_content_buttons, pattern=r"^(delete_text|delete_photo|delete_video|delete_audio|delete_document|delete_sticker|delete_voice|add_new_content|save_edit)"))
+        
         # Регистрация обработчиков сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
         app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
