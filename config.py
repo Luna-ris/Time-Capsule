@@ -53,6 +53,7 @@ def check_redis_connection():
 # Проверка запуска Celery Worker
 def check_celery_worker():
     try:
+        # Проверка активности Celery Worker
         result = celery_app.control.inspect().active()
         if result:
             logger.info("Celery Worker запущен.")
