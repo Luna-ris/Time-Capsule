@@ -40,7 +40,6 @@ celery_app.conf.accept_content = ['json']
 celery_app.conf.timezone = 'UTC'
 celery_app.conf.broker_connection_retry_on_startup = True
 
-# Проверка подключения к Redis
 def check_redis_connection():
     try:
         redis_client = redis.StrictRedis.from_url(REDIS_URL)
@@ -50,7 +49,6 @@ def check_redis_connection():
         logger.error(f"Ошибка подключения к Redis: {e}")
         sys.exit(1)
 
-# Проверка запуска Celery Worker
 def check_celery_worker():
     try:
         # Проверка активности Celery Worker
@@ -63,6 +61,7 @@ def check_celery_worker():
     except Exception as e:
         logger.error(f"Ошибка проверки Celery Worker: {e}")
         sys.exit(1)
+
 
 # Функция запуска сервисов
 def start_services():
