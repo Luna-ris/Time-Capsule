@@ -23,7 +23,6 @@ async def main():
 
         logger.info("Регистрация обработчиков команд...")
         
-        # Команды
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("help", help_command))
         app.add_handler(CommandHandler("create_capsule", create_capsule_command))
@@ -37,10 +36,7 @@ async def main():
         app.add_handler(CommandHandler("support_author", support_author))
         app.add_handler(CommandHandler("change_language", change_language))
 
-        # Обработчики текстовых сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-
-        # Обработчики медиа
         app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
         app.add_handler(MessageHandler(filters.VIDEO, handle_video))
         app.add_handler(MessageHandler(filters.AUDIO, handle_audio))
@@ -48,7 +44,6 @@ async def main():
         app.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
         app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
-        # Обработчики callback-запросов
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view)_"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
@@ -57,13 +52,12 @@ async def main():
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_edit_content_buttons, pattern=r"^(delete_text|delete_photo|delete_video|delete_audio|delete_document|delete_sticker|delete_voice|add_new_content|save_edit)"))
 
-        # Проверка прав бота
         await check_bot_permissions(app)
 
         logger.info("Запуск бота...")
         await app.run_polling(allowed_updates=["message", "callback_query"])
     except Exception as e:
-        logger.error(f"Критическая ошибка при запуске бота: {e}", extra={"user_id": None, "command": None, "message": str(e)})
+        logger.error(f"Критическая ошибка при запуске бота: {e}", extra={"user_id": None, "command": None, "msg_content": str(e)})
         raise
 
 if __name__ == "__main__":
