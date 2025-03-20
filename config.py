@@ -4,7 +4,7 @@ import logging
 from dotenv import load_dotenv
 from supabase import create_client
 from celery import Celery
-
+import redis
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
@@ -46,4 +46,28 @@ def start_services():
     if not redis_url:
         logger.error("Переменная REDIS_URL не задана.")
         sys.exit(1)
+    check_redis_connection()
+    check_celery_worker()
     logger.info("Сервисы успешно запущены.")
+
+def check_redis_connection():
+    try:
+        redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
+        redis_client.ping()
+        logger.info("Redis is running and accessible.")
+    except redis.ConnectionError as e:
+        logger.error(f"Redis connection error: {e}")
+        sys.exit(1)
+
+def check_celery_worker():
+    try:
+        # Проверка запуска Celery Worker
+        result = celery_app.control.inspect().active()
+        if result:
+            logger.info("Celery Worker is running.")
+        else:
+            logger.error("Celery Worker is not running.")
+            sys.exit(1)
+    except Exception as e:
+        logger.error(f"Celery Worker check error: {e}")
+        sys.exit(1)
