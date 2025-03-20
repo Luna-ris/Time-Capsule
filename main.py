@@ -26,7 +26,6 @@ from utils import post_init, check_bot_permissions
 async def error_handler(update: Update, context: CallbackContext) -> None:
     """Обработчик ошибок для Telegram бота."""
     logger.error(f"Произошла ошибка: {context.error}")
-
     # Проверяем, есть ли сообщение (update.message)
     if update and update.effective_message:
         try:
@@ -45,14 +44,11 @@ def main():
     try:
         nest_asyncio.apply()
         start_services()
-
         # Создание приложения Telegram
         logger.info("Инициализация приложения Telegram...")
         app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
-
         # Регистрация обработчика ошибок
         app.add_error_handler(error_handler)
-
         # Регистрация обработчиков команд
         logger.info("Регистрация обработчиков команд...")
         app.add_handler(CommandHandler("start", start))
@@ -67,7 +63,6 @@ def main():
         app.add_handler(CommandHandler("select_send_date", select_send_date))
         app.add_handler(CommandHandler("support_author", support_author))
         app.add_handler(CommandHandler("change_language", change_language))
-
         # Регистрация обработчиков callback-запросов
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
@@ -75,7 +70,6 @@ def main():
         app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view|add_recipient_page|send_capsule_page|delete_capsule_page|edit_capsule_page|view_recipients_page|view_page)_\d+$"))
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
-
         # Регистрация обработчиков сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
         app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
@@ -84,10 +78,8 @@ def main():
         app.add_handler(MessageHandler(filters.Document.ALL, handle_document))
         app.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
         app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-
         # Проверка прав бота с небольшой задержкой
         app.job_queue.run_once(check_bot_permissions, 2)
-
         # Запуск бота
         logger.info("Запуск бота...")
         app.run_polling(allowed_updates=Update.ALL_TYPES)
