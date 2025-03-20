@@ -14,7 +14,10 @@ from database import (
 from localization import t
 import pytz
 
-CREATING_CAPSULE = "creating_capsule"
+CREATING_CAPSULE_TITLE = "creating_capsule_title"
+CREATING_CAPSULE_CONTENT = "creating_capsule_content"
+CREATING_CAPSULE_RECIPIENTS = "creating_capsule_recipients"
+CREATING_CAPSULE_DATE = "creating_capsule_date"
 SELECTING_CAPSULE = "selecting_capsule"
 SELECTING_CAPSULE_FOR_RECIPIENTS = "selecting_capsule_for_recipients"
 
@@ -87,7 +90,7 @@ async def check_bot_permissions(context: CallbackContext):
 async def save_send_date(update: Update, context: CallbackContext, send_date: datetime, is_message: bool = False):
     """Сохранение даты отправки капсулы."""
     try:
-        capsule_id = context.user_data.get('selected_capsule_id')
+        capsule_id = context.user_data.get('selected_capsule_id') or context.user_data.get('current_capsule')
         if not capsule_id:
             if is_message:
                 await update.message.reply_text(t('error_general'))
@@ -95,9 +98,7 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
                 await update.callback_query.edit_message_text(t('error_general'))
             return
 
-        # Убедитесь, что send_date в правильном часовом поясе
         send_date = send_date.astimezone(pytz.utc)
-
         edit_capsule(capsule_id, scheduled_at=send_date)
         celery_app.send_task(
             'main.send_capsule_task',
@@ -111,7 +112,8 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(message_text)
         else:
             await update.callback_query.edit_message_text(message_text)
-        context.user_data['state'] = "idle"
+        if context.user_data.get('state') != CREATING_CAPSULE_DATE:
+            context.user_data['state'] = "idle"
     except Exception as e:
         logger.error(f"Ошибка при установке даты для капсулы {capsule_id}: {e}")
         if is_message:
