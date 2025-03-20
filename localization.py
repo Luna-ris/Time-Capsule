@@ -212,8 +212,7 @@ TRANSLATIONS = {
             "/delete_capsule - Elimina una cápsula si ya no la necesitas.\n"
             "/edit_capsule - Edita el contenido de la cápsula (texto).\n"
             "/view_recipients - Ver quién recibirá tu cápsula.\n"
-            "/select_send_date - Establece una fecha de envío para la cápsula.\n"
-            "*Ejemplo:* En una semana o un día específico.\n"
+            "/select_send_date - Establece una fecha de envío para la cápsula.\n*Ejemplo:* En una semana o un día específico.\n"
             "/support_author - Apoya al desarrollador del bot.\n"
             "/change_language - Cambia el idioma de la interfaz.\n\n"
         ),
@@ -377,8 +376,8 @@ TRANSLATIONS = {
         "add_recipient_btn": "👤 Ajouter un Destinataire",
         "send_capsule_btn": "📨 Envoyer la Capsule",
         "delete_capsule_btn": "🗑 Supprimer la Capsule",
-        "edit_capsule_btn": "✏️ Modifier la Capsule",
-        "view_recipients_btn": "👥 Voir les Destinatarios",
+        "edit_capsule_btn": "✏️ Éditer la Capsule",
+        "view_recipients_btn": "👥 Voir les Destinataires",
         "help_btn": "❓ Aide",
         "select_send_date_btn": "📅 Définir la Date d'Envoi",
         "support_author_btn": "💸 Soutenir l'Auteur",
@@ -455,9 +454,7 @@ TRANSLATIONS = {
             "💖 Unterstützen Sie den Autor des Bots:\n{url}\n"
             "Vielen Dank für Ihre Unterstützung beim Wachstum des Projekts!"
         ),
-        "create_capsule_first": (
-            "📦 Erstellen Sie zuerst eine Kapsel mit 'Kapsel erstellen', um Inhalte hinzuzufügen."
-        ),
+        "create_capsule_first": "📦 Erstellen Sie zuerst eine Kapsel mit 'Kapsel erstellen', um Inhalte hinzuzufügen.",
         "text_added": "✅ Textnachricht zur Kapsel hinzugefügt!",
         "photo_added": "✅ Foto zur Kapsel hinzugefügt!",
         "video_added": "✅ Video zur Kapsel hinzugefügt!",
