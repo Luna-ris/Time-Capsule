@@ -56,7 +56,6 @@ def send_capsule_task(capsule_id: int):
                 else:
                     logger.warning(f"Получатель {recipient['recipient_username']} не зарегистрирован")
             logger.info(f"Капсула {capsule_id} успешно отправлена")
-            delete_capsule(capsule_id)
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
