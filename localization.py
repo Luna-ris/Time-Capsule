@@ -1,4 +1,4 @@
-LOCALE = 'ru'
+LOCALE = 'en'
 
 TRANSLATIONS = {
     'ru': {
