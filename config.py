@@ -57,7 +57,7 @@ def check_celery_worker():
         if result:
             logger.info("Celery Worker запущен.")
         else:
-            logger.error("Celery Worker не запущен.")
+            logger.error("Celery Worker не запущен. Проверьте Procfile и логи Railway.")
             sys.exit(1)
     except Exception as e:
         logger.error(f"Ошибка проверки Celery Worker: {e}")
