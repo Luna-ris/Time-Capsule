@@ -34,7 +34,7 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
             logger.error(f"Не удалось отправить сообщение об ошибке пользователю: {e}")
     elif update and update.callback_query:
         try:
-            await update.callback_query.edit_message_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова.")
+            await update.callback_query.edit_message_text("⚠️ Произошла ошибка. Пожалуйста, попробуйте снова позже.")
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение об ошибке через callback: {e}")
 
