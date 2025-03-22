@@ -442,6 +442,51 @@ async def handle_content_buttons(update: Update, context: CallbackContext):
     elif query.data == "add_more":
         await query.edit_message_text("📝 Добавьте ещё контент в капсулу:")
 
+async def handle_text(update: Update, context: CallbackContext):
+    """Обработчик текстовых сообщений с пошаговым мастером."""
+    text = update.message.text.strip()
+    state = context.user_data.get('state', 'idle')
+    actions = {
+        t("create_capsule_btn", locale=LOCALE): create_capsule_command,
+        t("view_capsules_btn", locale=LOCALE): view_capsules_command,
+        t("add_recipient_btn", locale=LOCALE): add_recipient_command,
+        t("send_capsule_btn", locale=LOCALE): send_capsule_command,
+        t("delete_capsule_btn", locale=LOCALE): delete_capsule_command,
+        t("view_recipients_btn", locale=LOCALE): view_recipients_command,
+        t("help_btn", locale=LOCALE): help_command,
+        t("select_send_date_btn", locale=LOCALE): select_send_date,
+        t("support_author_btn", locale=LOCALE): support_author,
+        t("change_language_btn", locale=LOCALE): change_language
+    }
+    if text in actions:
+        await actions[text](update, context)
+    elif state == CREATING_CAPSULE_TITLE:
+        await handle_capsule_title(update, context, text)
+    elif state == CREATING_CAPSULE_CONTENT:
+        await handle_create_capsule_content(update, context, text)
+    elif state == CREATING_CAPSULE_RECIPIENTS:
+        await handle_recipient(update, context)
+    elif state == "adding_recipient":
+        await handle_recipient(update, context)
+    elif state == "entering_custom_date":
+        await handle_select_send_date(update, context, text)
+    else:
+        await update.effective_message.reply_text(t('create_capsule_first', locale=LOCALE))
+
+async def handle_recipient(update: Update, context: CallbackContext):
+    """Обработчик добавления получателей."""
+    try:
+        usernames = set(update.message.text.strip().split())
+        capsule_id = context.user_data.get('current_capsule') or context.user_data.get('selected_capsule_id')
+        for username in usernames:
+            add_recipient(capsule_id, username.lstrip('@'))
+        await update.effective_message.reply_text(t('recipients_added', capsule_id=capsule_id, locale=LOCALE))
+        context.user_data['state'] = "idle"
+    except Exception as e:
+        logger.error(f"Ошибка при добавлении получателя: {e}")
+        await update.effective_message.reply_text(t('error_general', locale=LOCALE))
+
+
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
     """Обработчик ввода пользовательской даты отправки."""
     try:
