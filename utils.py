@@ -49,11 +49,15 @@ def save_capsule_content(context: CallbackContext, capsule_id: int):
 
 def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> datetime:
     """Конвертация местного времени в UTC."""
-    local_tz = pytz.timezone(timezone)
-    local_time = datetime.strptime(local_time_str, "%d.%m.%Y %H:%M:%S")
-    local_time = local_tz.localize(local_time)
-    utc_time = local_time.astimezone(pytz.utc)
-    return utc_time
+    try:
+        local_time = datetime.strptime(local_time_str, "%d.%m.%Y %H:%M:%S")
+        local_tz = pytz.timezone(timezone)
+        local_time = local_tz.localize(local_time)
+        utc_time = local_time.astimezone(pytz.utc)
+        return utc_time
+    except ValueError as e:
+        logger.error(f"Ошибка преобразования даты: {e}")
+        return None
 
 async def post_init(application: Application):
     """Инициализация задач после запуска бота."""
@@ -130,4 +134,3 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
             await update.message.reply_text(t('error_general'))
         else:
             await update.callback_query.edit_message_text(t('error_general'))
-
