@@ -395,6 +395,8 @@ async def handle_text(update: Update, context: CallbackContext):
         await handle_capsule_title(update, context, text)
     elif state == CREATING_CAPSULE_CONTENT:
         await handle_create_capsule_content(update, context, text)
+    elif state == CREATING_CAPSULE_RECIPIENTS:
+        await handle_recipient(update, context)
     elif state == "adding_recipient":
         await handle_recipient(update, context)
     elif state == "entering_custom_date":
