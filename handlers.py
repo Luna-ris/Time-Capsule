@@ -303,6 +303,8 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
         elif action == "edit_capsule":
             await query.edit_message_text(t('enter_new_content', locale=LOCALE))
             context.user_data['state'] = EDITING_CAPSULE_CONTENT
+            context.user_data['capsule_content'] = {"text": [], "photos": [], "videos": [], "audios": [],
+                                                    "documents": [], "stickers": [], "voices": []}
         elif action == "view_recipients":
             await handle_view_recipients_logic(update, context, value)
         elif action == "select_send_date":
@@ -455,8 +457,9 @@ async def handle_edit_capsule_content(update: Update, context: CallbackContext, 
     """Обработчик редактирования содержимого капсулы."""
     try:
         capsule_id = context.user_data.get('selected_capsule_id')
-        context.user_data['capsule_content'] = {"text": [text], "photos": [], "videos": [], "audios": [],
-                                                  "documents": [], "stickers": [], "voices": []}
+        capsule_content = context.user_data.get('capsule_content', {"text": []})
+        capsule_content['text'].append(text)
+        context.user_data['capsule_content'] = capsule_content
         save_capsule_content(context, capsule_id)
         await update.effective_message.reply_text(t('capsule_edited', capsule_id=capsule_id, locale=LOCALE))
         context.user_data['state'] = "idle"
