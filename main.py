@@ -1,3 +1,4 @@
+# main.py
 import sys
 import nest_asyncio
 from telegram import Update
@@ -13,7 +14,7 @@ from config import TELEGRAM_TOKEN, logger, celery_app, start_services
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command,
     view_capsules_command, send_capsule_command, delete_capsule_command,
-    edit_capsule_command, view_recipients_command, select_send_date,
+    view_recipients_command, select_send_date,
     support_author, change_language, handle_language_selection,
     handle_date_buttons, handle_delete_confirmation, handle_text,
     handle_photo, handle_video, handle_audio, handle_document,
@@ -86,7 +87,6 @@ async def main():
         app.add_handler(CommandHandler("view_capsules", view_capsules_command))
         app.add_handler(CommandHandler("send_capsule", send_capsule_command))
         app.add_handler(CommandHandler("delete_capsule", delete_capsule_command))
-        app.add_handler(CommandHandler("edit_capsule", edit_capsule_command))
         app.add_handler(CommandHandler("view_recipients", view_recipients_command))
         app.add_handler(CommandHandler("select_send_date", select_send_date))
         app.add_handler(CommandHandler("support_author", support_author))
@@ -96,7 +96,7 @@ async def main():
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
         app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
-        app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|edit_capsule|view_recipients|select_send_date|view|add_recipient_page|send_capsule_page|delete_capsule_page|edit_capsule_page|view_recipients_page|view_page)_\d+$"))
+        app.add_handler(CallbackQueryHandler(handle_inline_selection, pattern=r"^(add_recipient|send_capsule|delete_capsule|view_recipients|select_send_date|view|add_recipient_page|send_capsule_page|delete_capsule_page|view_recipients_page|view_page)_\d+$"))
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
 
