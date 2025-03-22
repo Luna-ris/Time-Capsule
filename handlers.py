@@ -577,6 +577,7 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.effective_message.reply_text(t(f'{media_type[:-1]}_added', locale=LOCALE), reply_markup=reply_markup)
+        context.user_data['state'] = CREATING_CAPSULE_CONTENT  # Обновление состояния
     except Exception as e:
         logger.error(f"Ошибка при добавлении {media_type[:-1]}: {e}")
         await update.effective_message.reply_text(t('error_general', locale=LOCALE))
