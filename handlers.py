@@ -198,9 +198,11 @@ async def delete_capsule_command(update: Update, context: CallbackContext):
         context.user_data['state'] = "deleting_capsule"
 
 async def edit_capsule_command(update: Update, context: CallbackContext):
-    """Обработчик команды /edit_capsule."""
     if await show_capsule_selection(update, context, "edit_capsule"):
-        context.user_data['state'] = EDITING_CAPSULE_CONTENT
+        # Инициализируем состояние редактирования
+        context.user_data['state'] = "editing_capsule"
+        context.user_data['capsule_content'] = {"text": [], "photos": [], "videos": [], "audios": [],
+                                                "documents": [], "stickers": [], "voices": []}
 
 async def view_recipients_command(update: Update, context: CallbackContext):
     """Обработчик команды /view_recipients."""
