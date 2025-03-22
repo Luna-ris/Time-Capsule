@@ -476,12 +476,16 @@ async def finalize_capsule_creation(update: Update, context: CallbackContext):
 async def handle_recipient(update: Update, context: CallbackContext):
     """Обработчик добавления получателей."""
     try:
+        if context.user_data.get('state') != CREATING_CAPSULE_RECIPIENTS:
+            await update.effective_message.reply_text(t('create_capsule_first', locale=LOCALE))
+            return
+
         usernames = set(update.message.text.strip().split())
-        capsule_id = context.user_data.get('selected_capsule_id')
+        capsule_id = context.user_data.get('current_capsule')
         for username in usernames:
             add_recipient(capsule_id, username.lstrip('@'))
         await update.effective_message.reply_text(t('recipients_added', capsule_id=capsule_id, locale=LOCALE))
-        context.user_data['state'] = "idle"
+        context.user_data['state'] = "idle"  # Обновление состояния
     except Exception as e:
         logger.error(f"Ошибка при добавлении получателя: {e}")
         await update.effective_message.reply_text(t('error_general', locale=LOCALE))
