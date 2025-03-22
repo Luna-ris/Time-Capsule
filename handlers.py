@@ -322,6 +322,8 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
             context.user_data['state'] = "adding_recipient"
         elif action == "send_capsule":
             await preview_capsule(update, context, value, show_buttons=True)
+        elif action == "edit_capsule":
+            await start_edit_capsule(update, context)
         elif action == "delete_capsule":
             await query.edit_message_text(
                 t('confirm_delete', locale=LOCALE),
@@ -330,11 +332,6 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
                      InlineKeyboardButton("Нет", callback_data="cancel_delete")]
                 ])
             )
-        elif action == "edit_capsule":
-            await query.edit_message_text(t('enter_new_content', locale=LOCALE))
-            context.user_data['state'] = EDITING_CAPSULE_CONTENT
-            context.user_data['capsule_content'] = {"text": [], "photos": [], "videos": [], "audios": [],
-                                                    "documents": [], "stickers": [], "voices": []}
         elif action == "view_recipients":
             await handle_view_recipients_logic(update, context, value)
         elif action == "select_send_date":
@@ -351,6 +348,7 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
     except Exception as e:
         logger.error(f"Ошибка в handle_inline_selection: {query.data}, ошибка: {e}")
         await query.edit_message_text("⚠️ Ошибка: Неверный формат данных. Пожалуйста, попробуйте снова.")
+
 
 async def preview_capsule(update: Update, context: CallbackContext, capsule_id: int, show_buttons: bool = True):
     """Предпросмотр капсулы перед отправкой или просмотром."""
