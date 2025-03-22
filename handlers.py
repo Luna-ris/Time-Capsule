@@ -204,6 +204,34 @@ async def edit_capsule_command(update: Update, context: CallbackContext):
         context.user_data['capsule_content'] = {"text": [], "photos": [], "videos": [], "audios": [],
                                                 "documents": [], "stickers": [], "voices": []}
 
+async def start_edit_capsule(update: Update, context: CallbackContext):
+    query = update.callback_query
+    capsule_id = context.user_data.get('selected_capsule_id')
+    
+    if not await check_capsule_ownership(update, capsule_id, query):
+        return
+    
+    capsule = fetch_data("capsules", {"id": capsule_id})[0]
+    content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
+    
+    # Заполняем начальные данные
+    context.user_data['capsule_title'] = capsule['title']
+    context.user_data['capsule_content'] = content
+    context.user_data['state'] = CREATING_CAPSULE_CONTENT
+    
+    keyboard = [
+        [InlineKeyboardButton("Завершить", callback_data="finish_capsule"),
+         InlineKeyboardButton("Добавить ещё", callback_data="add_more")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"📦 Редактирование капсулы #{capsule_id}:
+Текущее содержимое:
+{json.dumps(content, ensure_ascii=False, indent=2)}",
+        reply_markup=reply_markup
+    )
+
 async def view_recipients_command(update: Update, context: CallbackContext):
     """Обработчик команды /view_recipients."""
     if await show_capsule_selection(update, context, "view_recipients"):
