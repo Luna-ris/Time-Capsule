@@ -46,7 +46,7 @@ TRANSLATIONS = {
             "*Пример:* @Friend1 @Friend2\n"
             "Они получат капсулу, когда вы её отправите или наступит заданная дата."
         ),
-        "select_capsule": "📦 Выберите капсулу для действия: (Страница {page} из {total_pages}):",
+        "select_capsule": "📦 Выберите капсулу для действия:",
         "invalid_capsule_id": (
             "❌ Неверный ID капсулы. Проверьте список ваших капсул с помощью 'Просмотреть капсулы'."
         ),
@@ -54,7 +54,7 @@ TRANSLATIONS = {
             "✅ Получатели добавлены в капсулу #{capsule_id}!\n"
             "Теперь можно установить дату отправки или отправить её сразу."
         ),
-        "error_general": "⚠️ Что-то пошло не так. Попробуйте снова или напишите @TimeCapsuleSupport.",
+        "error_general": "⚠️ Что-то пошло не так. Попробуйте снова или напишите в поддержку.",
         "service_unavailable": (
             "🛠 Сервис временно недоступен. Пожалуйста, подождите и попробуйте позже."
         ),
@@ -125,18 +125,30 @@ TRANSLATIONS = {
             "Use the buttons below to get started!"
         ),
         "help_message": (
-            "📋 *TimeCapsuleBot Command List*\n\n"
-            "/start - Launch the bot and open the main menu.\n"
-            "/create_capsule - Create a new time capsule.\n*Example:* Add text, photos, or videos.\n"
-            "/add_recipient - Add recipients to an existing capsule.\n*Example:* @Friend1 @Friend2\n"
-            "/view_capsules - View a list of your capsules with their status.\n"
-            "/send_capsule - Send a capsule to recipients immediately.\n"
-            "/delete_capsule - Delete a capsule if you no longer need it.\n"
-            "/edit_capsule - Edit the capsule’s content (text).\n"
-            "/view_recipients - See who will receive your capsule.\n"
-            "/select_send_date - Set a send date for the capsule.\n*Example:* In a week or a specific day.\n"
-            "/support_author - Support the bot’s developer.\n"
-            "/change_language - Change the interface language.\n\n"
+            "📋 *TimeCapsuleBot Guide*\n\n"
+            "TimeCapsuleBot allows you to create time capsules that can be sent to yourself or friends in the future. "
+            "Here’s how to use the bot step by step:\n\n"
+            "*1. Creating a Capsule (/create_capsule)*\n"
+            "- Click 'Create Capsule' or enter /create_capsule.\n"
+            "- Enter a name for the capsule.\n"
+            "- Add content: text, photos, videos, audio, stickers, or documents.\n"
+            "- After each addition, choose 'Add More' or 'Finish'.\n"
+            "- Specify the recipients (e.g., @Friend1 @Friend2).\n"
+            "- (Optional) Set a send date using the 'Set Send Date' command.\n\n"
+            "*2. Managing Capsules*\n"
+            "- *View Capsules (/view_capsules)*: View a list of your capsules.\n"
+            "- *Add Recipient (/add_recipient)*: Add new recipients to an existing capsule.\n"
+            "- *Send Capsule (/send_capsule)*: Immediately send the capsule to all recipients.\n"
+            "- *Delete Capsule (/delete_capsule)*: Delete an unwanted capsule.\n"
+            "- *View Recipients (/view_recipients)*: See who will receive the capsule.\n"
+            "- *Set Send Date (/select_send_date)*: Specify when the capsule will be sent (e.g., in a week, a month, or choose your own date).\n\n"
+            "*3. Send Dates*\n"
+            "- If you used 'Set Send Date' after creating the capsule, it will be sent at the specified time.\n"
+            "- Without a date, the capsule will remain in drafts until you send it manually.\n\n"
+            "*Additional*\n"
+            "- *Support Author (/support_author)*: Support the bot’s development.\n"
+            "- *Change Language (/change_language)*: Select your preferred interface language.\n\n"
+            "If you have any questions, contact @TimeCapsuleSupport! Start with the /start command."
         ),
         "change_language": "🌍 Change Language",
         "select_language": "Select your language:",
@@ -146,7 +158,7 @@ TRANSLATIONS = {
             "*Example:* @Friend1 @Friend2\n"
             "They’ll receive the capsule when you send it or the scheduled date arrives."
         ),
-        "select_capsule": "📦 Select a capsule for the action: (Page {page} of {total_pages}):",
+        "select_capsule": "📦 Select a capsule for the action:",
         "invalid_capsule_id": "❌ Invalid capsule ID. Check your capsule list with 'View Capsules'.",
         "recipients_added": (
             "✅ Recipients added to capsule #{capsule_id}!\n"
@@ -217,18 +229,30 @@ TRANSLATIONS = {
             "¡Usa los botones de abajo para comenzar!"
         ),
         "help_message": (
-            "📋 *Lista de comandos de TimeCapsuleBot*\n\n"
-            "/start - Inicia el bot y abre el menú principal.\n"
-            "/create_capsule - Crea una nueva cápsula del tiempo.\n*Ejemplo:* Agrega texto, fotos o videos.\n"
-            "/add_recipient - Agrega destinatarios a una cápsula existente.\n*Ejemplo:* @Friend1 @Friend2\n"
-            "/view_capsules - Ver una lista de tus cápsulas con su estado.\n"
-            "/send_capsule - Envía una cápsula a los destinatarios inmediatamente.\n"
-            "/delete_capsule - Elimina una cápsula si ya no la necesitas.\n"
-            "/edit_capsule - Edita el contenido de la cápsula (texto).\n"
-            "/view_recipients - Ver quién recibirá tu cápsula.\n"
-            "/select_send_date - Establece una fecha de envío para la cápsula.\n*Ejemplo:* En una semana o un día específico.\n"
-            "/support_author - Apoya al desarrollador del bot.\n"
-            "/change_language - Cambia el idioma de la interfaz.\n\n"
+            "📋 *Guía de TimeCapsuleBot*\n\n"
+            "TimeCapsuleBot te permite crear cápsulas del tiempo que puedes enviarte a ti mismo o a tus amigos en el futuro. "
+            "Aquí tienes cómo usar el bot paso a paso:\n\n"
+            "*1. Crear una Cápsula (/create_capsule)*\n"
+            "- Haz clic en 'Crear Cápsula' o ingresa /create_capsule.\n"
+            "- Ingresa un nombre para la cápsula.\n"
+            "- Añade contenido: texto, fotos, videos, audio, stickers o documentos.\n"
+            "- Después de cada adición, elige 'Añadir Más' o 'Finalizar'.\n"
+            "- Especifica los destinatarios (por ejemplo, @Friend1 @Friend2).\n"
+            "- (Opcional) Establece una fecha de envío usando el comando 'Establecer Fecha de Envío'.\n\n"
+            "*2. Gestionar Cápsulas*\n"
+            "- *Ver Cápsulas (/view_capsules)*: Ver una lista de tus cápsulas.\n"
+            "- *Añadir Destinatario (/add_recipient)*: Añade nuevos destinatarios a una cápsula existente.\n"
+            "- *Enviar Cápsula (/send_capsule)*: Envía la cápsula a todos los destinatarios inmediatamente.\n"
+            "- *Eliminar Cápsula (/delete_capsule)*: Elimina una cápsula no deseada.\n"
+            "- *Ver Destinatarios (/view_recipients)*: Ver quién recibirá la cápsula.\n"
+            "- *Establecer Fecha de Envío (/select_send_date)*: Especifica cuándo se enviará la cápsula (por ejemplo, en una semana, un mes o elige tu propia fecha).\n\n"
+            "*3. Fechas de Envío*\n"
+            "- Si usaste 'Establecer Fecha de Envío' después de crear la cápsula, se enviará en el momento especificado.\n"
+            "- Sin una fecha, la cápsula permanecerá en borradores hasta que la envíes manualmente.\n\n"
+            "*Adicional*\n"
+            "- *Apoyar al Autor (/support_author)*: Apoya el desarrollo del bot.\n"
+            "- *Cambiar Idioma (/change_language)*: Selecciona tu idioma preferido para la interfaz.\n\n"
+            "Si tienes alguna pregunta, contacta a @TimeCapsuleSupport! Comienza con el comando /start."
         ),
         "change_language": "🌍 Cambiar idioma",
         "select_language": "Selecciona tu idioma:",
@@ -238,8 +262,8 @@ TRANSLATIONS = {
             "*Ejemplo:* @Friend1 @Friend2\n"
             "Ellos recibirán la cápsula cuando la envíes o llegue la fecha programada."
         ),
-        "select_capsule": "📦 Selecciona una cápsula para la acción: (Página {page} de {total_pages}):",
-        "invalid_capsule_id": "❌ ID de cápsula inválido. Verifica tu lista de cápsulas con 'Ver cápsulas'.",
+        "select_capsule": "📦 Selecciona una cápsula para la acción:",
+        "invalid_capsule_id": "❌ ID de cápsula inválido. Verifica tu lista de cápsulas con 'Ver Cápsulas'.",
         "recipients_added": (
             "✅ ¡Destinatarios agregados a la cápsula #{capsule_id}!\n"
             "Ahora puedes establecer una fecha de envío o enviarla inmediatamente."
@@ -249,13 +273,13 @@ TRANSLATIONS = {
             "🛠 El servicio no está disponible temporalmente. Por favor, espera e inténtalo de nuevo más tarde."
         ),
         "your_capsules": "📋 *Tus cápsulas del tiempo:*\n",
-        "no_capsules": "📭 Todavía no tienes cápsulas. ¡Crea tu primera con 'Crear cápsula'!",
+        "no_capsules": "📭 Todavía no tienes cápsulas. ¡Crea tu primera con 'Crear Cápsula'!",
         "created_at": "Creado",
         "status": "Estado",
         "scheduled": "⏳ Programado",
         "draft": "✏️ Borrador",
         "enter_capsule_id_to_send": "📨 Ingresa el ID de la cápsula para enviar inmediatamente (por ejemplo, #5):",
-        "no_recipients": "❌ Esta cápsula no tiene destinatarios. Agrega algunos con 'Agregar destinatario'.",
+        "no_recipients": "❌ Esta cápsula no tiene destinatarios. Agrega algunos con 'Agregar Destinatario'.",
         "capsule_received": "🎉 ¡Has recibido una cápsula del tiempo de @{sender}!\nAquí está su contenido:",
         "capsule_sent": "📬 ¡Cápsula enviada exitosamente a @{recipient}!\nLa verán ahora.",
         "recipient_not_registered": (
@@ -278,7 +302,7 @@ TRANSLATIONS = {
             "💖 Apoya al autor del bot:\n{url}\n"
             "¡Gracias por ayudar a que el proyecto crezca!"
         ),
-        "create_capsule_first": "📦 Primero, crea una cápsula con 'Crear cápsula' para agregar contenido.",
+        "create_capsule_first": "📦 Primero, crea una cápsula con 'Crear Cápsula' para agregar contenido.",
         "text_added": "✅ ¡Mensaje de texto agregado a la cápsula!",
         "photo_added": "✅ ¡Foto agregada a la cápsula!",
         "video_added": "✅ ¡Video agregado a la cápsula!",
@@ -311,18 +335,30 @@ TRANSLATIONS = {
             "Utilisez les boutons ci-dessous pour commencer !"
         ),
         "help_message": (
-            "📋 *Liste des commandes de TimeCapsuleBot*\n\n"
-            "/start - Lancez le bot et ouvrez le menu principal.\n"
-            "/create_capsule - Créez une nouvelle capsule temporelle.\n*Exemple:* Ajoutez du texte, des photos ou des vidéos.\n"
-            "/add_recipient - Ajoutez des destinataires à une capsule existante.\n*Exemple:* @Friend1 @Friend2\n"
-            "/view_capsules - Affichez une liste de vos capsules avec leur statut.\n"
-            "/send_capsule - Envoyez une capsule aux destinataires immédiatement.\n"
-            "/delete_capsule - Supprimez une capsule si vous n'en avez plus besoin.\n"
-            "/edit_capsule - Modifiez le contenu de la capsule (texte).\n"
-            "/view_recipients - Voyez qui recevra votre capsule.\n"
-            "/select_send_date - Définissez une date d'envoi pour la capsule.\n*Exemple:* Dans une semaine ou un jour spécifique.\n"
-            "/support_author - Soutenez le développeur du bot.\n"
-            "/change_language - Changez la langue de l'interface.\n\n"
+            "📋 *Guide de TimeCapsuleBot*\n\n"
+            "TimeCapsuleBot vous permet de créer des capsules temporelles que vous pouvez envoyer à vous-même ou à vos amis dans le futur. "
+            "Voici comment utiliser le bot étape par étape:\n\n"
+            "*1. Créer une Capsule (/create_capsule)*\n"
+            "- Cliquez sur 'Créer une Capsule' ou entrez /create_capsule.\n"
+            "- Entrez un nom pour la capsule.\n"
+            "- Ajoutez du contenu : texte, photos, vidéos, audio, stickers ou documents.\n"
+            "- Après chaque ajout, choisissez 'Ajouter Plus' ou 'Terminer'.\n"
+            "- Spécifiez les destinataires (par exemple, @Friend1 @Friend2).\n"
+            "- (Optionnel) Définissez une date d'envoi en utilisant la commande 'Définir la Date d'Envoi'.\n\n"
+            "*2. Gérer les Capsules*\n"
+            "- *Voir les Capsules (/view_capsules)*: Voir une liste de vos capsules.\n"
+            "- *Ajouter un Destinataire (/add_recipient)*: Ajoutez de nouveaux destinataires à une capsule existante.\n"
+            "- *Envoyer la Capsule (/send_capsule)*: Envoyez la capsule à tous les destinataires immédiatement.\n"
+            "- *Supprimer la Capsule (/delete_capsule)*: Supprimez une capsule non désirée.\n"
+            "- *Voir les Destinataires (/view_recipients)*: Voir qui recevra la capsule.\n"
+            "- *Définir la Date d'Envoi (/select_send_date)*: Spécifiez quand la capsule sera envoyée (par exemple, dans une semaine, un mois ou choisissez votre propre date).\n\n"
+            "*3. Dates d'Envoi*\n"
+            "- Si vous avez utilisé 'Définir la Date d'Envoi' après avoir créé la capsule, elle sera envoyée à l'heure spécifiée.\n"
+            "- Sans date, la capsule restera en brouillon jusqu'à ce que vous l'envoyiez manuellement.\n\n"
+            "*Additionnel*\n"
+            "- *Soutenir l'Auteur (/support_author)*: Soutenez le développement du bot.\n"
+            "- *Changer de Langue (/change_language)*: Sélectionnez votre langue préférée pour l'interface.\n\n"
+            "Si vous avez des questions, contactez @TimeCapsuleSupport! Commencez avec la commande /start."
         ),
         "change_language": "🌍 Changer de langue",
         "select_language": "Sélectionnez votre langue :",
@@ -332,8 +368,8 @@ TRANSLATIONS = {
             "*Exemple:* @Friend1 @Friend2\n"
             "Ils recevront la capsule lorsque vous l'enverrez ou à la date programmée."
         ),
-        "select_capsule": "📦 Sélectionnez une capsule pour l'action : (Page {page} sur {total_pages}):",
-        "invalid_capsule_id": "❌ ID de capsule invalide. Vérifiez votre liste de capsules avec 'Voir les capsules'.",
+        "select_capsule": "📦 Sélectionnez une capsule pour l'action :",
+        "invalid_capsule_id": "❌ ID de capsule invalide. Vérifiez votre liste de capsules avec 'Voir les Capsules'.",
         "recipients_added": (
             "✅ Destinataires ajoutés à la capsule #{capsule_id} !\n"
             "Vous pouvez maintenant définir une date d'envoi ou l'envoyer immédiatement."
@@ -343,13 +379,13 @@ TRANSLATIONS = {
             "🛠 Le service est temporairement indisponible. Veuillez patienter et réessayer plus tard."
         ),
         "your_capsules": "📋 *Vos capsules temporelles :*\n",
-        "no_capsules": "📭 Vous n'avez pas encore de capsules. Créez votre première avec 'Créer une capsule' !",
+        "no_capsules": "📭 Vous n'avez pas encore de capsules. Créez votre première avec 'Créer une Capsule' !",
         "created_at": "Créé",
         "status": "Statut",
         "scheduled": "⏳ Programmé",
         "draft": "✏️ Brouillon",
         "enter_capsule_id_to_send": "📨 Entrez l'ID de la capsule à envoyer immédiatement (par exemple, #5) :",
-        "no_recipients": "❌ Cette capsule n'a pas de destinataires. Ajoutez-en avec 'Ajouter un destinataire'.",
+        "no_recipients": "❌ Cette capsule n'a pas de destinataires. Ajoutez-en avec 'Ajouter un Destinataire'.",
         "capsule_received": "🎉 Vous avez reçu une capsule temporelle de @{sender} !\nVoici son contenu :",
         "capsule_sent": "📬 Capsule envoyée avec succès à @{recipient} !\nIls la verront maintenant.",
         "recipient_not_registered": (
@@ -372,7 +408,7 @@ TRANSLATIONS = {
             "💖 Soutenez l'auteur du bot :\n{url}\n"
             "Merci de contribuer à la croissance du projet !"
         ),
-        "create_capsule_first": "📦 Créez d'abord une capsule avec 'Créer une capsule' pour ajouter du contenu.",
+        "create_capsule_first": "📦 Créez d'abord une capsule avec 'Créer une Capsule' pour ajouter du contenu.",
         "text_added": "✅ Message texte ajouté à la capsule !",
         "photo_added": "✅ Photo ajoutée à la capsule !",
         "video_added": "✅ Vidéo ajoutée à la capsule !",
@@ -391,7 +427,7 @@ TRANSLATIONS = {
         "send_capsule_btn": "📨 Envoyer la Capsule",
         "delete_capsule_btn": "🗑 Supprimer la Capsule",
         "edit_capsule_btn": "✏️ Éditer la Capsule",
-        "view_recipients_btn": "👥 Voir les Destinataires",
+        "view_recipients_btn": "👥 Voir les Destinatarios",
         "help_btn": "❓ Aide",
         "select_send_date_btn": "📅 Définir la Date d'Envoi",
         "support_author_btn": "💸 Soutenir l'Auteur",
@@ -405,18 +441,30 @@ TRANSLATIONS = {
             "Verwenden Sie die Schaltflächen unten, um loszulegen!"
         ),
         "help_message": (
-            "📋 *TimeCapsuleBot-Befehlsliste*\n\n"
-            "/start - Starten Sie den Bot und öffnen Sie das Hauptmenü.\n"
-            "/create_capsule - Erstellen Sie eine neue Zeitkapsel.\n*Beispiel:* Fügen Sie Text, Fotos oder Videos hinzu.\n"
-            "/add_recipient - Fügen Sie Empfänger zu einer vorhandenen Kapsel hinzu.\n*Beispiel:* @Friend1 @Friend2\n"
-            "/view_capsules - Zeigen Sie eine Liste Ihrer Kapseln mit deren Status an.\n"
-            "/send_capsule - Senden Sie eine Kapsel sofort an die Empfänger.\n"
-            "/delete_capsule - Löschen Sie eine Kapsel, wenn Sie sie nicht mehr benötigen.\n"
-            "/edit_capsule - Bearbeiten Sie den Inhalt der Kapsel (Text).\n"
-            "/view_recipients - Sehen Sie, wer Ihre Kapsel erhält.\n"
-            "/select_send_date - Legen Sie ein Sendedatum für die Kapsel fest.\n*Beispiel:* In einer Woche oder an einem bestimmten Tag.\n"
-            "/support_author - Unterstützen Sie den Entwickler des Bots.\n"
-            "/change_language - Ändern Sie die Sprache der Benutzeroberfläche.\n\n"
+            "📋 *TimeCapsuleBot-Anleitung*\n\n"
+            "TimeCapsuleBot ermöglicht es Ihnen, Zeitkapseln zu erstellen, die Sie sich selbst oder Freunden in der Zukunft senden können. "
+            "Hier ist eine Schritt-für-Schritt-Anleitung zur Verwendung des Bots:\n\n"
+            "*1. Kapsel erstellen (/create_capsule)*\n"
+            "- Klicken Sie auf 'Kapsel erstellen' oder geben Sie /create_capsule ein.\n"
+            "- Geben Sie einen Namen für die Kapsel ein.\n"
+            "- Fügen Sie Inhalte hinzu: Text, Fotos, Videos, Audio, Sticker oder Dokumente.\n"
+            "- Nach jeder Hinzufügung wählen Sie 'Mehr hinzufügen' oder 'Fertigstellen'.\n"
+            "- Geben Sie die Empfänger an (z.B. @Friend1 @Friend2).\n"
+            "- (Optional) Legen Sie ein Sendedatum mit dem Befehl 'Sendedatum festlegen' fest.\n\n"
+            "*2. Kapseln verwalten*\n"
+            "- *Kapseln anzeigen (/view_capsules)*: Zeigt eine Liste Ihrer Kapseln an.\n"
+            "- *Empfänger hinzufügen (/add_recipient)*: Fügen Sie einer bestehenden Kapsel neue Empfänger hinzu.\n"
+            "- *Kapsel senden (/send_capsule)*: Senden Sie die Kapsel sofort an alle Empfänger.\n"
+            "- *Kapsel löschen (/delete_capsule)*: Löschen Sie eine unerwünschte Kapsel.\n"
+            "- *Empfänger anzeigen (/view_recipients)*: Sehen Sie, wer die Kapsel erhalten wird.\n"
+            "- *Sendedatum festlegen (/select_send_date)*: Legen Sie fest, wann die Kapsel gesendet wird (z.B. in einer Woche, einem Monat oder wählen Sie Ihr eigenes Datum).\n\n"
+            "*3. Sendedaten*\n"
+            "- Wenn Sie 'Sendedatum festlegen' nach dem Erstellen der Kapsel verwendet haben, wird sie zum angegebenen Zeitpunkt gesendet.\n"
+            "- Ohne Datum bleibt die Kapsel im Entwurfsmodus, bis Sie sie manuell senden.\n\n"
+            "*Zusätzlich*\n"
+            "- *Autor unterstützen (/support_author)*: Unterstützen Sie die Entwicklung des Bots.\n"
+            "- *Sprache ändern (/change_language)*: Wählen Sie Ihre bevorzugte Sprache für die Benutzeroberfläche.\n\n"
+            "Wenn Sie Fragen haben, kontaktieren Sie @TimeCapsuleSupport! Beginnen Sie mit dem Befehl /start."
         ),
         "change_language": "🌍 Sprache ändern",
         "select_language": "Wählen Sie Ihre Sprache:",
@@ -426,7 +474,7 @@ TRANSLATIONS = {
             "*Beispiel:* @Friend1 @Friend2\n"
             "Sie erhalten die Kapsel, wenn Sie sie senden oder das geplante Datum erreicht ist."
         ),
-        "select_capsule": "📦 Wählen Sie eine Kapsel für die Aktion aus: (Seite {page} von {total_pages}):",
+        "select_capsule": "📦 Wählen Sie eine Kapsel für die Aktion aus:",
         "invalid_capsule_id": "❌ Ungültige Kapsel-ID. Überprüfen Sie Ihre Kapselliste mit 'Kapseln anzeigen'.",
         "recipients_added": (
             "✅ Empfänger zur Kapsel #{capsule_id} hinzugefügt!\n"
@@ -449,9 +497,7 @@ TRANSLATIONS = {
         "recipient_not_registered": (
             "⚠️ Der Empfänger @{recipient} ist nicht beim Bot registriert und erhält die Kapsel nicht."
         ),
-        "confirm_delete": (
-            "🗑 Sind Sie sicher, dass Sie diese Kapsel löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden."
-        ),
+        "confirm_delete": "🗑 Sind Sie sicher, dass Sie diese Kapsel löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.",
         "capsule_deleted": "✅ Kapsel #{capsule_id} gelöscht.",
         "delete_canceled": "❌ Löschen abgebrochen. Die Kapsel bleibt unversehrt.",
         "enter_new_content": "✏️ Geben Sie den neuen Text für die Kapsel ein (der alte Inhalt wird ersetzt):",
