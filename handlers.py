@@ -57,6 +57,17 @@ async def create_capsule_command(update: Update, context: CallbackContext):
                                             "documents": [], "stickers": [], "voices": []}
     await update.effective_message.reply_text("📦 Введите название капсулы:")
 
+async def finish_edit_capsule(update: Update, context: CallbackContext):
+    query = update.callback_query
+    capsule_id = context.user_data.get('selected_capsule_id')
+    content = context.user_data.get('capsule_content', {})
+    
+    # Сохраняем отредактированное содержимое
+    save_capsule_content(context, capsule_id)
+    
+    await query.edit_message_text(t('capsule_edited', capsule_id=capsule_id, locale=LOCALE))
+    context.user_data['state'] = "idle"
+
 async def show_capsule_selection(update: Update, context: CallbackContext, action: str):
     """Отображение инлайн-меню для выбора капсулы с пагинацией."""
     capsules = get_user_capsules(update.effective_user.id)
