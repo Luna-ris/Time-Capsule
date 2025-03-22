@@ -436,7 +436,7 @@ async def handle_content_buttons(update: Update, context: CallbackContext):
         user_capsule_number = generate_unique_capsule_number(creator_id)
         capsule_id = create_capsule(creator_id, context.user_data['capsule_title'], content, user_capsule_number)
         context.user_data['current_capsule'] = capsule_id
-        context.user_data['state'] = CREATING_CAPSULE_RECIPIENTS
+        context.user_data['state'] = CREATING_CAPSULE_RECIPIENTS  # Обновление состояния
         await query.edit_message_text(t('capsule_created', capsule_id=capsule_id, locale=LOCALE) + "\n👥 Укажите получателей (например, @Friend1 @Friend2):")
     elif query.data == "add_more":
         await query.edit_message_text("📝 Добавьте ещё контент в капсулу:")
