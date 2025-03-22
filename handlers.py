@@ -481,7 +481,7 @@ async def handle_recipient(update: Update, context: CallbackContext):
     """Обработчик добавления получателей."""
     try:
         usernames = set(update.message.text.strip().split())
-        capsule_id = context.user_data.get('selected_capsule_id')
+        capsule_id = context.user_data.get('current_capsule') or context.user_data.get('selected_capsule_id')
         for username in usernames:
             add_recipient(capsule_id, username.lstrip('@'))
         await update.effective_message.reply_text(t('recipients_added', capsule_id=capsule_id, locale=LOCALE))
