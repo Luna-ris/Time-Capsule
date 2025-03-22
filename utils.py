@@ -1,3 +1,4 @@
+# utils.py
 import json
 from datetime import datetime, timedelta
 from telegram.ext import Application, CallbackContext
@@ -6,7 +7,6 @@ from config import logger, celery_app
 from database import (
     fetch_data,
     create_capsule,
-    edit_capsule,
     delete_capsule,
     generate_unique_capsule_number,
     update_data
