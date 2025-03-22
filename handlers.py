@@ -75,40 +75,34 @@ async def show_capsule_selection(update: Update, context: CallbackContext, actio
         await update.effective_message.reply_text(t('no_capsules', locale=LOCALE))
         return False
 
-    # Сортируем капсулы по ID
     capsules = sorted(capsules, key=lambda x: x['id'])
     logger.info(f"Найдено {len(capsules)} капсул для пользователя {update.effective_user.id}")
 
-    # Пагинация: определяем текущую страницу для конкретного действия
     page_key = f"{action}_page"
     page = context.user_data.get(page_key, 1)
-    capsules_per_page = 10  # 5 строк по 2 столбца = 10 капсул на страницу
-    total_pages = (len(capsules) + capsules_per_page - 1) // capsules_per_page  # Исправлено: total_pages вместо total Wages
+    capsules_per_page = 10
+    total_pages = (len(capsules) + capsules_per_page - 1) // capsules_per_page
 
-    # Ограничиваем страницу
     page = max(1, min(page, total_pages))
     logger.info(f"Отображение страницы {page} из {total_pages} для действия {action}")
 
-    # Выбираем капсулы для текущей страницы
     start_idx = (page - 1) * capsules_per_page
     end_idx = start_idx + capsules_per_page
     current_capsules = capsules[start_idx:end_idx]
     logger.info(f"Выбраны капсулы с индекса {start_idx} по {end_idx}: {len(current_capsules)} капсул")
 
-    # Создаем кнопки в 2 столбца
     keyboard = []
     row = []
     for i, capsule in enumerate(current_capsules):
-        button_text = f"📦 #{capsule['id']}: {capsule['title']}"[:30]  # Ограничиваем длину текста
+        button_text = f"📦 #{capsule['id']}: {capsule['title']}"[:30]
         button = InlineKeyboardButton(button_text, callback_data=f"{action}_{capsule['id']}")
         row.append(button)
-        if len(row) == 2:  # Если в ряду 2 кнопки, добавляем ряд в клавиатуру
+        if len(row) == 2:
             keyboard.append(row)
             row = []
-    if row:  # Добавляем последний ряд, если он не пустой
+    if row:
         keyboard.append(row)
 
-    # Добавляем кнопки пагинации
     nav_buttons = []
     if page > 1:
         nav_buttons.append(InlineKeyboardButton("⬅️ Предыдущая", callback_data=f"{action}_page_{page-1}"))
@@ -124,7 +118,6 @@ async def show_capsule_selection(update: Update, context: CallbackContext, actio
     else:
         await update.effective_message.reply_text(response, reply_markup=reply_markup)
 
-    # Сохраняем текущую страницу для этого действия
     context.user_data[page_key] = page
     context.user_data['action'] = action
     return True
@@ -137,7 +130,6 @@ async def add_recipient_command(update: Update, context: CallbackContext):
 async def view_capsules_command(update: Update, context: CallbackContext):
     """Обработчик команды /view_capsules с улучшенным отображением и пагинацией."""
     try:
-        # Используем update.effective_user.id вместо update.message.from_user.id
         capsules = get_user_capsules(update.effective_user.id)
         if not capsules:
             if update.callback_query:
@@ -146,32 +138,25 @@ async def view_capsules_command(update: Update, context: CallbackContext):
                 await update.effective_message.reply_text(t('no_capsules', locale=LOCALE))
             return
 
-        # Сортируем капсулы по ID по возрастанию
         capsules = sorted(capsules, key=lambda x: x['id'])
 
-        # Пагинация: определяем текущую страницу
         page = context.user_data.get('view_capsules_page', 1)
-        capsules_per_page = 5  # Количество капсул на страницу
+        capsules_per_page = 5
         total_pages = (len(capsules) + capsules_per_page - 1) // capsules_per_page
 
-        # Ограничиваем страницу
         page = max(1, min(page, total_pages))
 
-        # Выбираем капсулы для текущей страницы
         start_idx = (page - 1) * capsules_per_page
         end_idx = start_idx + capsules_per_page
         current_capsules = capsules[start_idx:end_idx]
 
-        # Формируем текст и кнопки
         response = f"📋 {t('your_capsules', locale=LOCALE)} (Страница {page} из {total_pages}):\n\n"
         keyboard = []
         for capsule in current_capsules:
-            # Убираем статус, оставляем только номер и название
-            button_text = f"📦 #{capsule['id']} {capsule['title']}"[:40]  # Ограничиваем длину текста
+            button_text = f"📦 #{capsule['id']} {capsule['title']}"[:40]
             button = InlineKeyboardButton(button_text, callback_data=f"view_{capsule['id']}")
-            keyboard.append([button])  # Каждая кнопка в отдельной строке
+            keyboard.append([button])
 
-        # Добавляем кнопки пагинации
         nav_buttons = []
         if page > 1:
             nav_buttons.append(InlineKeyboardButton("⬅️ Предыдущая", callback_data=f"view_page_{page-1}"))
@@ -182,13 +167,11 @@ async def view_capsules_command(update: Update, context: CallbackContext):
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        # Отправляем или редактируем сообщение в зависимости от контекста
         if update.callback_query:
             await update.callback_query.edit_message_text(response, reply_markup=reply_markup)
         else:
             await update.effective_message.reply_text(response, reply_markup=reply_markup)
 
-        # Сохраняем текущую страницу
         context.user_data['view_capsules_page'] = page
 
     except Exception as e:
@@ -210,22 +193,39 @@ async def delete_capsule_command(update: Update, context: CallbackContext):
 
 async def edit_capsule_command(update: Update, context: CallbackContext):
     if await show_capsule_selection(update, context, "edit_capsule"):
-        # Инициализируем состояние редактирования
         context.user_data['state'] = "editing_capsule"
         context.user_data['capsule_content'] = {"text": [], "photos": [], "videos": [], "audios": [],
                                                 "documents": [], "stickers": [], "voices": []}
 
 async def start_edit_capsule(update: Update, context: CallbackContext):
+    """Обработчик начала редактирования капсулы."""
     query = update.callback_query
     capsule_id = context.user_data.get('selected_capsule_id')
 
+    # Изменение: Улучшенная проверка владения капсулой
     if not await check_capsule_ownership(update, capsule_id, query):
+        logger.info(f"Пользователь {update.effective_user.id} не владеет капсулой {capsule_id}")
+        await query.edit_message_text("🚫 Вы не являетесь владельцем этой капсулы.")
         return
 
-    capsule = fetch_data("capsules", {"id": capsule_id})[0]
-    content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
+    # Изменение: Проверка результата fetch_data
+    capsules = fetch_data("capsules", {"id": capsule_id})
+    if not capsules:
+        logger.error(f"Капсула с ID {capsule_id} не найдена в базе данных")
+        await query.edit_message_text(f"⚠️ Капсула #{capsule_id} не найдена.")
+        return
 
-    # Заполняем начальные данные
+    capsule = capsules[0]
+    logger.info(f"Данные капсулы #{capsule_id}: {capsule}")
+
+    # Изменение: Обработка ошибок при расшифровке контента
+    try:
+        content = json.loads(decrypt_data_aes(capsule['content'], ENCRYPTION_KEY_BYTES))
+    except Exception as e:
+        logger.error(f"Ошибка при расшифровке контента капсулы {capsule_id}: {str(e)}, тип: {type(e).__name__}")
+        await query.edit_message_text("⚠️ Ошибка при загрузке содержимого капсулы.")
+        return
+
     context.user_data['capsule_title'] = capsule['title']
     context.user_data['capsule_content'] = content
     context.user_data['state'] = CREATING_CAPSULE_CONTENT
@@ -303,27 +303,26 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
     query = update.callback_query
     logger.info(f"handle_inline_selection вызвана с callback_data: {query.data}")
     try:
-        # Разделяем callback_data на части
         parts = query.data.split('_')
         if len(parts) < 2:
             raise ValueError("Неверный формат callback_data")
 
-        # Проверяем, является ли это пагинацией (например, select_send_date_page_2)
         if parts[-2] == "page":
-            action_type = "_".join(parts[:-2])  # Например, select_send_date
-            page_number = int(parts[-1])  # Например, 2
+            action_type = "_".join(parts[:-2])
+            page_number = int(parts[-1])
             context.user_data[f"{action_type}_page"] = page_number
             logger.info(f"Переход на страницу {page_number} для действия {action_type}")
             await show_capsule_selection(update, context, action_type)
             return
         else:
-            # Обычный выбор капсулы (например, select_send_date_42)
-            action = "_".join(parts[:-1])  # Например, select_send_date
-            value = int(parts[-1])  # Например, 42
+            action = "_".join(parts[:-1])
+            value = int(parts[-1])
 
         context.user_data['selected_capsule_id'] = value
 
         if not await check_capsule_ownership(update, value, query):
+            logger.info(f"Пользователь {update.effective_user.id} не владеет капсулой {value}")
+            await query.edit_message_text("🚫 Вы не являетесь владельцем этой капсулы.")
             return
 
         if action == "add_recipient":
@@ -352,11 +351,11 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(t('choose_send_date', locale=LOCALE), reply_markup=reply_markup)
         elif action == "view":
-            # Показываем содержимое капсулы без кнопок
             await preview_capsule(update, context, value, show_buttons=False)
     except Exception as e:
-        logger.error(f"Ошибка в handle_inline_selection: {query.data}, ошибка: {e}")
-        await query.edit_message_text("⚠️ Ошибка: Неверный формат данных. Пожалуйста, попробуйте снова.")
+        # Изменение: Улучшенное логирование ошибок
+        logger.error(f"Ошибка в handle_inline_selection: {query.data}, ошибка: {str(e)}, тип: {type(e).__name__}")
+        await query.edit_message_text(f"⚠️ Ошибка: {str(e)}. Пожалуйста, попробуйте снова.")
 
 async def preview_capsule(update: Update, context: CallbackContext, capsule_id: int, show_buttons: bool = True):
     """Предпросмотр капсулы перед отправкой или просмотром."""
@@ -389,7 +388,7 @@ async def preview_capsule(update: Update, context: CallbackContext, capsule_id: 
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
     else:
-        reply_markup = None  # Без кнопок
+        reply_markup = None
 
     await update.callback_query.edit_message_text(preview_text, reply_markup=reply_markup)
 
@@ -512,7 +511,6 @@ async def handle_create_capsule_recipients(update: Update, context: CallbackCont
             await update.effective_message.reply_text(t('error_general', locale=LOCALE))
             return
 
-        # Сразу добавляем получателей в базу данных
         for username in usernames:
             add_recipient(capsule_id, username.lstrip('@'))
 
@@ -575,7 +573,6 @@ async def handle_select_send_date(update: Update, context: CallbackContext, text
 async def finalize_capsule_creation(update: Update, context: CallbackContext):
     """Завершение создания капсулы."""
     capsule_id = context.user_data['current_capsule']
-    # Удаляем добавление получателей, так как это уже сделано в handle_create_capsule_recipients
     await update.effective_message.reply_text(t('recipients_added', capsule_id=capsule_id, locale=LOCALE))
     context.user_data['state'] = "idle"
     context.user_data.pop('capsule_title', None)
