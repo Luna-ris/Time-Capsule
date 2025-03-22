@@ -9,7 +9,8 @@ from database import (
     create_capsule,
     delete_capsule,
     generate_unique_capsule_number,
-    update_data
+    update_data,
+    edit_capsule
 )
 from localization import t
 import pytz
