@@ -419,6 +419,7 @@ async def handle_create_capsule_content(update: Update, context: CallbackContext
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.effective_message.reply_text(t('text_added', locale=LOCALE), reply_markup=reply_markup)
+    context.user_data['state'] = CREATING_CAPSULE_CONTENT  # Обновление состояния
 
 async def handle_content_buttons(update: Update, context: CallbackContext):
     """Обработчик кнопок 'Завершить' и 'Добавить ещё'."""
