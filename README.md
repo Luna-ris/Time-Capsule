@@ -1,9 +1,5 @@
 # TimeCapsuleBot
 
-![GitHub release](https://img.shields.io/github/v/release/username/timecapsulebot)  
-![License](https://img.shields.io/github/license/username/timecapsulebot)  
-![Python](https://img.shields.io/badge/python-3.9+-blue)
-
 **TimeCapsuleBot** — это Telegram-бот, который позволяет пользователям создавать "капсулы времени" с текстом, фото, видео, аудио, стикерами и документами, чтобы отправить их себе или друзьям в будущем. Бот поддерживает многоязычный интерфейс, шифрование данных и планирование отправки через Celery.
 
 ## Основные возможности
