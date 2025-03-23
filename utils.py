@@ -1,6 +1,5 @@
-# utils.py
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from telegram.ext import Application, CallbackContext
 from telegram import Update
 from config import logger, celery_app
@@ -31,6 +30,7 @@ async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -
         else:
             await update.message.reply_text(t('not_registered'))
         return False
+
     capsule = fetch_data("capsules", {"id": capsule_id})
     if not capsule or capsule[0]['creator_id'] != user[0]['id']:
         if query:
@@ -38,6 +38,7 @@ async def check_capsule_ownership(update: Update, capsule_id: int, query=None) -
         else:
             await update.message.reply_text(t('not_your_capsule'))
         return False
+
     return True
 
 def save_capsule_content(context: CallbackContext, capsule_id: int):
@@ -54,8 +55,7 @@ def convert_to_utc(local_time_str: str, timezone: str = 'Europe/Moscow') -> date
         local_time = datetime.strptime(local_time_str, "%d.%m.%Y %H:%M:%S")
         local_tz = pytz.timezone(timezone)
         local_time = local_tz.localize(local_time)
-        utc_time = local_time.astimezone(pytz.utc)
-        return utc_time
+        return local_time.astimezone(pytz.utc)
     except ValueError as e:
         logger.error(f"Ошибка преобразования даты: {e}")
         return None
@@ -103,10 +103,8 @@ async def save_send_date(update: Update, context: CallbackContext, send_date: da
                 await update.callback_query.edit_message_text(t('error_general'))
             return
 
-        # Убедитесь, что send_date в правильном часовом поясе
         send_date = send_date.astimezone(pytz.utc)
 
-        # Проверка существования капсулы перед отправкой задачи
         capsule = fetch_data("capsules", {"id": capsule_id})
         if not capsule:
             if is_message:
