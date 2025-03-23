@@ -1,5 +1,3 @@
-# Time-Capsule
-
 # TimeCapsuleBot
 
 ![GitHub release](https://img.shields.io/github/v/release/username/timecapsulebot)  
