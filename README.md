@@ -102,16 +102,18 @@
 
 ```
 timecapsulebot/
-├── main.py         # Основной файл запуска бота
-├── utils.py        # Утилитарные функции
-├── tasks.py        # Задачи Celery
-├── handlers.py     # Обработчики команд и сообщений
-├── database.py     # Взаимодействие с Supabase
-├── crypto.py       # Шифрование/дешифрование
-├── config.py       # Конфигурация и настройка
-├── localization.py # Локализация
-├── requirements.txt# Зависимости
-└── README.md       # Этот файл
+├── main.py          # Основной файл запуска бота
+├── utils.py         # Утилитарные функции
+├── tasks.py         # Задачи Celery
+├── handlers.py      # Обработчики команд и сообщений
+├── database.py      # Взаимодействие с Supabase
+├── crypto.py        # Шифрование/дешифрование
+├── config.py        # Конфигурация и настройка
+├── localization.py  # Локализация
+├── celery_config.py # Отдельная конфигурация Celery
+├── capsule_job.py   # Логика отправки капсул
+├── requirements.txt # Зависимости
+└── README.md        # Этот файл
 ```
 
 ## Зависимости
