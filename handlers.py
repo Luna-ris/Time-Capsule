@@ -1,4 +1,3 @@
-# handlers.py
 import json
 from datetime import datetime, timedelta
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
@@ -14,7 +13,6 @@ from database import (
 from utils import check_capsule_ownership, save_capsule_content, convert_to_utc, save_send_date
 import pytz
 
-# Состояния для пошагового мастера создания капсулы
 CREATING_CAPSULE_TITLE = "creating_capsule_title"
 CREATING_CAPSULE_CONTENT = "creating_capsule_content"
 CREATING_CAPSULE_RECIPIENTS = "creating_capsule_recipients"
@@ -290,7 +288,6 @@ async def handle_inline_selection(update: Update, context: CallbackContext):
         elif action == "view":
             await preview_capsule(update, context, value, show_buttons=False)
     except Exception as e:
-        # Изменение: Улучшенное логирование ошибок
         logger.error(f"Ошибка в handle_inline_selection: {query.data}, ошибка: {str(e)}, тип: {type(e).__name__}")
         await query.edit_message_text(f"⚠️ Ошибка: {str(e)}. Пожалуйста, попробуйте снова.")
 
@@ -421,7 +418,7 @@ async def handle_create_capsule_content(update: Update, context: CallbackContext
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.effective_message.reply_text(t('text_added', locale=LOCALE), reply_markup=reply_markup)
-    context.user_data['state'] = CREATING_CAPSULE_CONTENT  # Обновление состояния
+    context.user_data['state'] = CREATING_CAPSULE_CONTENT
 
 async def handle_content_buttons(update: Update, context: CallbackContext):
     """Обработчик кнопок 'Завершить' и 'Добавить ещё'."""
@@ -439,11 +436,10 @@ async def handle_content_buttons(update: Update, context: CallbackContext):
         user_capsule_number = generate_unique_capsule_number(creator_id)
         capsule_id = create_capsule(creator_id, context.user_data['capsule_title'], content, user_capsule_number)
         context.user_data['current_capsule'] = capsule_id
-        context.user_data['state'] = CREATING_CAPSULE_RECIPIENTS  # Обновление состояния
+        context.user_data['state'] = CREATING_CAPSULE_RECIPIENTS
         await query.edit_message_text(t('capsule_created', capsule_id=capsule_id, locale=LOCALE) + "\n👥 Укажите получателей (например, @Friend1 @Friend2):")
     elif query.data == "add_more":
         await query.edit_message_text("📝 Добавьте ещё контент в капсулу:")
-
 
 async def handle_select_send_date(update: Update, context: CallbackContext, text: str):
     """Обработчик ввода пользовательской даты отправки."""
@@ -544,22 +540,6 @@ async def handle_view_recipients_logic(update: Update, context: CallbackContext,
         logger.error(f"Ошибка при получении получателей: {e}")
         await update.callback_query.edit_message_text(t('error_general', locale=LOCALE))
 
-async def handle_photo(update: Update, context: CallbackContext):
-    """Обработчик добавления фото в капсулу."""
-    if context.user_data.get('state') not in [CREATING_CAPSULE_CONTENT]:
-        await update.effective_message.reply_text(t('create_capsule_first', locale=LOCALE))
-        return
-    capsule_content = context.user_data.get('capsule_content', {"photos": []})
-    photo_file_id = (await update.message.photo[-1].get_file()).file_id
-    capsule_content.setdefault('photos', []).append(photo_file_id)
-    context.user_data['capsule_content'] = capsule_content
-    keyboard = [
-        [InlineKeyboardButton("Завершить", callback_data="finish_capsule"),
-         InlineKeyboardButton("Добавить ещё", callback_data="add_more")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.effective_message.reply_text(t('photo_added', locale=LOCALE), reply_markup=reply_markup)
-
 async def handle_media(update: Update, context: CallbackContext, media_type: str, file_attr: str):
     """Обработчик медиафайлов."""
     if context.user_data.get('state') not in [CREATING_CAPSULE_CONTENT]:
@@ -576,10 +556,14 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.effective_message.reply_text(t(f'{media_type[:-1]}_added', locale=LOCALE), reply_markup=reply_markup)
-        context.user_data['state'] = CREATING_CAPSULE_CONTENT  # Обновление состояния
+        context.user_data['state'] = CREATING_CAPSULE_CONTENT
     except Exception as e:
         logger.error(f"Ошибка при добавлении {media_type[:-1]}: {e}")
         await update.effective_message.reply_text(t('error_general', locale=LOCALE))
+
+async def handle_photo(update: Update, context: CallbackContext):
+    """Обработчик добавления фото в капсулу."""
+    await handle_media(update, context, "photos", "photo")
 
 async def handle_video(update: Update, context: CallbackContext):
     """Обработчик добавления видео."""
