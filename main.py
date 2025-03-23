@@ -1,4 +1,3 @@
-# main.py
 import sys
 import nest_asyncio
 from telegram import Update
@@ -42,7 +41,6 @@ async def error_handler(update: Update, context: CallbackContext) -> None:
 # Проверка задачи Celery
 async def check_celery_task(celery_app):
     try:
-        # Отправляем тестовую задачу
         result = celery_app.send_task('main.send_capsule_task', args=[1], countdown=10)
         async_result = AsyncResult(result.id, app=celery_app)
         logger.info(f"Статус задачи Celery: {async_result.status}")
@@ -71,14 +69,11 @@ async def main():
         nest_asyncio.apply()
         start_services()
 
-        # Создание приложения Telegram
         logger.info("Инициализация приложения Telegram...")
         app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
 
-        # Регистрация обработчика ошибок
         app.add_error_handler(error_handler)
 
-        # Регистрация обработчиков команд
         logger.info("Регистрация обработчиков команд...")
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("help", help_command))
@@ -92,7 +87,6 @@ async def main():
         app.add_handler(CommandHandler("support_author", support_author))
         app.add_handler(CommandHandler("change_language", change_language))
 
-        # Регистрация обработчиков callback-запросов
         app.add_handler(CallbackQueryHandler(handle_language_selection, pattern=r"^(ru|en|es|fr|de)$"))
         app.add_handler(CallbackQueryHandler(handle_date_buttons, pattern=r"^(week|month|custom)$"))
         app.add_handler(CallbackQueryHandler(handle_delete_confirmation, pattern=r"^(confirm_delete|cancel_delete)$"))
@@ -100,7 +94,6 @@ async def main():
         app.add_handler(CallbackQueryHandler(handle_content_buttons, pattern=r"^(finish_capsule|add_more)$"))
         app.add_handler(CallbackQueryHandler(handle_send_confirmation, pattern=r"^(confirm_send|cancel_send)$"))
 
-        # Регистрация обработчиков сообщений
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
         app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
         app.add_handler(MessageHandler(filters.VIDEO, handle_video))
@@ -109,13 +102,10 @@ async def main():
         app.add_handler(MessageHandler(filters.Sticker.ALL, handle_sticker))
         app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
-        # Проверка прав бота с небольшой задержкой
         app.job_queue.run_once(check_bot_permissions, 2)
 
-        # Проверка запуска Celery
         await check_celery_task(celery_app)
 
-        # Запуск бота
         logger.info("Запуск бота...")
         app.run_polling(allowed_updates=Update.ALL_TYPES)
     except Exception as e:
