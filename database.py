@@ -78,7 +78,8 @@ def create_capsule(
         "creator_id": creator_id,
         "title": title,
         "content": encrypted_content,
-        "user_capsule_number": user_capsule_number
+        "user_capsule_number": user_capsule_number,
+        "is_sent": False
     }
     if scheduled_at:
         data["scheduled_at"] = scheduled_at.isoformat()
@@ -107,6 +108,7 @@ def edit_capsule(capsule_id: int, title: Optional[str] = None, content: Optional
         data["content"] = encrypt_data_aes(content)
     if scheduled_at:
         data["scheduled_at"] = scheduled_at.isoformat()
+        data["is_sent"] = False
     if data:
         update_data("capsules", {"id": capsule_id}, data)
 
