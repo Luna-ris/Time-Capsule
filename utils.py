@@ -3,14 +3,7 @@ from datetime import datetime
 from telegram.ext import Application, CallbackContext
 from telegram import Update
 from config import logger, celery_app
-from database import (
-    fetch_data,
-    create_capsule,
-    delete_capsule,
-    generate_unique_capsule_number,
-    update_data,
-    edit_capsule
-)
+from database import fetch_data, create_capsule, delete_capsule, generate_unique_capsule_number, update_data, edit_capsule
 from localization import t
 import pytz
 
@@ -71,7 +64,7 @@ async def post_init(application: Application):
         logger.info(f"Текущее время UTC: {now}")
 
         for capsule in capsules:
-            if capsule.get('scheduled_at'):
+            if capsule.get('scheduled_at') and not capsule.get('is_sent'):
                 scheduled_at = datetime.fromisoformat(capsule['scheduled_at']).replace(tzinfo=pytz.utc)
                 logger.info(f"Обработка капсулы {capsule['id']}, запланированной на {scheduled_at}")
 
