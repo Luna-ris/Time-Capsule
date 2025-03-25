@@ -8,7 +8,7 @@ from telegram import Bot
 from telegram.ext import Application
 from config import logger, TELEGRAM_TOKEN, ENCRYPTION_KEY_BYTES, celery_app
 from localization import t
-from database import fetch_data, delete_capsule, get_capsule_recipients, get_chat_id
+from database import fetch_data, delete_capsule, get_capsule_recipients, get_chat_id, update_data
 from crypto import decrypt_data_aes
 
 @celery_app.task(name='main.send_capsule_task')
@@ -20,6 +20,10 @@ def send_capsule_task(capsule_id: int):
             capsule = fetch_data("capsules", {"id": capsule_id})
             if not capsule:
                 logger.error(f"Капсула {capsule_id} не найдена")
+                return
+
+            if capsule[0]['is_sent']:
+                logger.info(f"Капсула {capsule_id} уже была отправлена")
                 return
 
             content = json.loads(decrypt_data_aes(capsule[0]['content'], ENCRYPTION_KEY_BYTES))
@@ -58,6 +62,7 @@ def send_capsule_task(capsule_id: int):
                     logger.warning(f"Получатель {recipient['recipient_username']} не зарегистрирован")
 
             logger.info(f"Капсула {capsule_id} успешно отправлена")
+            update_data("capsules", {"id": capsule_id}, {"is_sent": True})
         except Exception as e:
             logger.error(f"Ошибка в задаче отправки капсулы {capsule_id}: {e}")
 
