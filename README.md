@@ -140,7 +140,7 @@ TimeCapsuleBot — это бот, который я разработал, что
 
 Эти переменные нужны для подключения к базе данных Supabase:
 1. Зарегистрируйся на [Supabase](https://supabase.com/) и создай новый проект.
-2. Зайди в **Settings** → **API**.
+2. Зайди в **Settings** → **Data-API**.
 3. Скопируй:
    - **URL** (например, `https://your-project-id.supabase.co`).
    - **Anon Key** (это публичный ключ API).
