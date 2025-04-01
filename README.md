@@ -1,3 +1,4 @@
+```markdown
 # TimeCapsuleBot
 
 Привет! Это **TimeCapsuleBot** — мой проект, созданный для конкурса Международной олимпиады "IT-Планета 2025". Этот Telegram-бот позволяет создавать "капсулы времени" — сообщения с текстом, фото, видео, аудио и другими файлами, которые можно отправить себе или друзьям в будущем. Я постарался сделать его удобным, безопасным и функциональным, используя современные инструменты и технологии.
@@ -50,25 +51,35 @@ TimeCapsuleBot — это бот, который я разработал, что
 ### Установка
 
 1. Склонируй репозиторий:
+   ```bash
    git clone https://github.com/Luna-ris/Time-Capsule
    cd Time-Capsule
+   ```
 
 2. Установи зависимости:
+   ```bash
    pip install -r requirements.txt
+   ```
 
 3. Настрой переменные окружения (подробности ниже) в файле `.env`:
+   ```plaintext
    TELEGRAM_TOKEN=your_telegram_token
    ENCRYPTION_KEY=your_encryption_key
    SUPABASE_URL=https://your-project-id.supabase.co
    SUPABASE_KEY=your_supabase_key
    REDIS_URL=redis://default:password@redis-1234.railway.app:6379
    DONATIONALERTS_TOKEN=your_donationalerts_token
+   ```
 
 4. Запусти бота:
+   ```bash
    python main.py
+   ```
 
 5. Чтобы отложенная отправка работала, запусти Celery-воркер:
+   ```bash
    celery -A config.celery_app worker --loglevel=info
+   ```
 
 ### Развёртывание на Railway
 
@@ -90,13 +101,16 @@ TimeCapsuleBot — это бот, который я разработал, что
 3. Следуй инструкциям: придумай имя бота (например, `TimeCapsuleBot`) и username (например, `@TimeCapsuleBot`).
 4. @BotFather даст тебе токен, например: `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`.
 5. Скопируй его и добавь в `.env`:
+   ```plaintext
    TELEGRAM_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+   ```
 
 ### 2. `ENCRYPTION_KEY`
 
 Это ключ для шифрования данных. Он должен быть длиной 32 байта (в шестнадцатеричном формате — 64 символа). Я написал скрипт, чтобы сгенерировать его:
 
 1. Сохрани этот код в файл `generate_key.py`:
+   ```python
    import os
 
    def generate_encryption_key():
@@ -107,14 +121,21 @@ TimeCapsuleBot — это бот, который я разработал, что
    if __name__ == "__main__":
        encryption_key = generate_encryption_key()
        print(f"Сгенерированный ключ шифрования: {encryption_key}")
+   ```
 
 2. Запусти скрипт:
+   ```bash
    python generate_key.py
+   ```
    Он выведет что-то вроде:
+   ```
    Сгенерированный ключ шифрования: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6
+   ```
 
 3. Скопируй ключ и добавь в `.env`:
+   ```plaintext
    ENCRYPTION_KEY=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6
+   ```
 
 ### 3. `SUPABASE_URL` и `SUPABASE_KEY`
 
@@ -125,8 +146,10 @@ TimeCapsuleBot — это бот, который я разработал, что
    - **URL** (например, `https://your-project-id.supabase.co`).
    - **Anon Key** (это публичный ключ API).
 4. Добавь их в `.env`:
+   ```plaintext
    SUPABASE_URL=https://your-project-id.supabase.co
    SUPABASE_KEY=your-anon-key
+   ```
 
 ### 4. `REDIS_URL`
 
@@ -134,10 +157,14 @@ TimeCapsuleBot — это бот, который я разработал, что
 1. Если работаешь локально:
    - Установи Redis.
    - По умолчанию Redis работает на `localhost:6379`, так что:
+     ```plaintext
      REDIS_URL=redis://localhost:6379/0
+     ```
 2. Если используешь Railway:
    - Railway сам предоставит Redis. Зайди в настройки проекта, найди сервис Redis и скопируй его URL, например:
+     ```plaintext
      REDIS_URL=redis://default:password@redis-1234.railway.app:6379
+     ```
 
 ### 5. `DONATIONALERTS_TOKEN`
 
@@ -146,7 +173,9 @@ TimeCapsuleBot — это бот, который я разработал, что
 2. Зайди в раздел **API** или **Настройки интеграции**.
 3. Создай приложение или виджет и получи токен (например, `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`).
 4. Добавь его в `.env`:
+   ```plaintext
    DONATIONALERTS_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
 Если донаты тебе не нужны, можешь пропустить этот шаг — бот будет работать и без этой переменной.
 
 ## Как пользоваться ботом?
@@ -169,3 +198,4 @@ TimeCapsuleBot — это бот, который я разработал, что
 - `database.py`: Функции для работы с Supabase (создание, чтение, обновление, удаление данных).
 - `crypto.py`: Шифрование и дешифрование данных с помощью AES.
 - `config.py`: Настройки бота, включая переменные окружения, логирование и Celery.
+```
