@@ -547,7 +547,7 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         return
     capsule_content = context.user_data.get('capsule_content', {media_type: []})
     try:
-        file_id = (await getattr(update.message, file_attr).get_file()).file_id
+        file_id = (await getattr(update.message, file_attr)[-1].get_file()).file_id
         capsule_content.setdefault(media_type, []).append(file_id)
         context.user_data['capsule_content'] = capsule_content
         keyboard = [
