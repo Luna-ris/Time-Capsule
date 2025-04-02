@@ -547,7 +547,21 @@ async def handle_media(update: Update, context: CallbackContext, media_type: str
         return
     capsule_content = context.user_data.get('capsule_content', {media_type: []})
     try:
-        file_id = (await getattr(update.message, file_attr)[-1].get_file()).file_id
+        if media_type == "photos":
+            file_id = (await update.message.photo[-1].get_file()).file_id
+        elif media_type == "videos":
+            file_id = (await update.message.video.get_file()).file_id
+        elif media_type == "audios":
+            file_id = (await update.message.audio.get_file()).file_id
+        elif media_type == "documents":
+            file_id = (await update.message.document.get_file()).file_id
+        elif media_type == "stickers":
+            file_id = (await update.message.sticker.get_file()).file_id
+        elif media_type == "voices":
+            file_id = (await update.message.voice.get_file()).file_id
+        else:
+            raise ValueError(f"Неизвестный тип медиа: {media_type}")
+
         capsule_content.setdefault(media_type, []).append(file_id)
         context.user_data['capsule_content'] = capsule_content
         keyboard = [
