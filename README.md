@@ -97,7 +97,7 @@ TimeCapsuleBot — это бот, который я разработал, что
 Это токен твоего Telegram-бота. Чтобы его получить:
 1. Открой Telegram, найди @BotFather.
 2. Напиши `/start`, а затем `/newbot`.
-3. Следуй инструкциям: придумай имя бота (например, `TimeCapsuleBot`) и username (например, `@TimeCapsuleBot`).
+3. Следуй инструкциям: придумай имя бота (например, `TimeCapsuleBot`) и username (например, `@TimeCapsulee_Bot`).
 4. @BotFather даст тебе токен, например: `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`.
 5. Скопируй его и добавь в `.env`:
    ```plaintext
