@@ -1,4 +1,4 @@
-1import sys
+import sys
 import nest_asyncio
 from telegram import Update
 from telegram.ext import (
