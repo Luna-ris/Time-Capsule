@@ -5,6 +5,7 @@ import redis
 from dotenv import load_dotenv
 from supabase import create_client
 from celery import Celery
+from tasks import send_capsule_task
 
 # Настройка логирования
 logger = logging.getLogger(__name__)
