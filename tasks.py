@@ -1,4 +1,4 @@
-from celery import Celery
+from celery_config import logger, TELEGRAM_TOKEN, ENCRYPTION_KEY_BYTES, celery_app
 import asyncio
 import json
 from datetime import datetime
@@ -6,7 +6,6 @@ from typing import List, Optional
 import pytz
 from telegram import Bot
 from telegram.ext import Application
-from config import logger, TELEGRAM_TOKEN, ENCRYPTION_KEY_BYTES, celery_app
 from localization import t
 from database import fetch_data, delete_capsule, get_capsule_recipients, get_chat_id, update_data
 from crypto import decrypt_data_aes
