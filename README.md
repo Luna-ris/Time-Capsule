@@ -94,9 +94,8 @@ TimeCapsuleBot — это бот, который я разработал, что
 4. Убедись, что Redis и Supabase доступны для твоего приложения.
 5. Разверни проект — Railway сам запустит `main.py`.
 6. Чтобы отложенная отправка работала, запусти Celery-воркер.Cоздай Empty Service и в Custom Start Command пропиши:
-Чтобы отложенная отправка работала, запусти Celery-воркер
    ```bash
-  celery -A tasks worker --loglevel=info --pool=solo
+   celery -A tasks worker --loglevel=info --pool=solo
    ```
 
 ## Как настроить переменные окружения?
