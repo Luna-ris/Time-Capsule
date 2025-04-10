@@ -66,7 +66,7 @@ TimeCapsuleBot — это бот, который я разработал, что
    ENCRYPTION_KEY=your_encryption_key
    SUPABASE_URL=https://your-project-id.supabase.co
    SUPABASE_KEY=your_supabase_key
-   REDIS_URL=redis://default:password@redis-1234.railway.app:6379
+   REDIS_URL=redis://localhost:6379/0
    DONATIONALERTS_TOKEN=your_donationalerts_token
    ```
 
