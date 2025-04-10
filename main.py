@@ -9,7 +9,7 @@ from telegram.ext import (
     CallbackQueryHandler,
     CallbackContext
 )
-from celery_config import TELEGRAM_TOKEN, logger, celery_app, start_services
+from config import TELEGRAM_TOKEN, logger, celery_app, start_services
 from handlers import (
     start, help_command, create_capsule_command, add_recipient_command,
     view_capsules_command, send_capsule_command, delete_capsule_command,
