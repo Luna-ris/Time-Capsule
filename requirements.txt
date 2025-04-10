@@ -1,4 +1,5 @@
 python-telegram-bot
+telegram update
 python-dotenv
 supabase
 cryptography
