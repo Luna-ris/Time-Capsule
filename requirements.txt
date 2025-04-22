@@ -1,4 +1,5 @@
 python-telegram-bot==13.11
+urllib3==1.26.6
 python-dotenv
 supabase
 cryptography
