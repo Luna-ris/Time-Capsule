@@ -1,4 +1,4 @@
-python-telegram-bot==13.11
+python-telegram-bot==20.0
 urllib3==1.26.6
 python-dotenv
 supabase
@@ -9,6 +9,5 @@ pytz
 aiohttp
 asyncio
 nest-asyncio
-telegram
 celery
 redis
